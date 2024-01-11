@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Year Progress Bar</title>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .progress-container {
+    width: 100%;
+    background-color: #e6e6e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 1rem;
+    background-color: #4caf50;
+    width: 0%;
+    border-radius: 0.5rem 0 0 0.5rem;
+    transition: width 0.5s ease-in-out;
+  }
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.querySelector('.progress-text');
+    const updateProgress = () => {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 1); // Start of the year
+      const end = new Date(now.getFullYear() + 1, 0, 1); // Start of the next year
+      const progress = (now - start) / (end - start);
+      progressBar.style.width = (progress * 100).toFixed(5) + '%';
+      progressText.textContent = `${now.getFullYear()} is ${(progress * 100).toFixed(5)}% Complete.`;
+    };
+
+    setInterval(updateProgress, 1000); // Update every second
+  });
+</script>
+</head>
+<body class="bg-gray-100 font-sans antialiased text-gray-900 flex items-center justify-center h-screen">
+<div class="space-y-4">
+  <h1 class="text-2xl font-semibold">Year Progress Bar</h1>
+  <div class="progress-container">
+    <div class="progress-bar"></div>
+  </div>
+  <div class="progress-text text-base">2024 is ##.#####% Complete.</div>
+</div>
+</body>
+</html>
