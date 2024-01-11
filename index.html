@@ -5,10 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Year Progress Bar</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
 <style>
   body {
     font-family: 'Roboto', sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+  }
+
+  .container {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .progress-container {
@@ -17,8 +31,7 @@
     border-radius: 1rem;
     overflow: hidden;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    margin: auto;
-    padding: 3px;
+    margin: 20px 0;
   }
 
   .progress-bar {
@@ -26,32 +39,10 @@
     background-color: #4caf50;
     width: 0%;
     border-radius: 1rem;
-    transition: width 0.1s linear; /* 속도를 0.1초로 변경 */
-    background-image: linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.2) 25%,
-      transparent 25%,
-      transparent 50%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0.2) 75%,
-      transparent 75%,
-      transparent
-    );
-    background-size: 50px 50px;
-    animation: move 2s linear infinite;
-  }
-
-  @keyframes move {
-    from {
-      background-position: 0 0;
-    }
-    to {
-      background-position: 50px 50px;
-    }
+    transition: width 0.1s linear;
   }
 
   .progress-text {
-    text-align: center;
     font-size: 1.5rem;
     font-weight: 700;
     margin-top: 0.5rem;
@@ -59,7 +50,7 @@
 
   footer {
     text-align: center;
-    margin-top: 2rem;
+    margin-top: 20px;
   }
 
   footer a {
@@ -80,25 +71,25 @@
       const end = new Date(now.getFullYear() + 1, 0, 1);
       const progress = (now - start) / (end - start);
       const progressBar = document.querySelector('.progress-bar');
-      progressBar.style.width = (progress * 100).toFixed(4) + '%'; /* 소수점 네 번째 자리까지 표시 */
-      document.querySelector('.progress-text').textContent = `2024 is ${(progress * 100).toFixed(4)}% Complete.`;
+      progressBar.style.width = (progress * 100).toFixed(5) + '%';
+      document.querySelector('.progress-text').textContent = `2024 is ${(progress * 100).toFixed(5)}% Complete.`;
     };
 
-    setInterval(updateProgress, 10); // 0.01초마다 업데이트
+    setInterval(updateProgress, 1); // 0.001초마다 업데이트
   });
 </script>
 </head>
-<body class="bg-gray-100 antialiased text-gray-900 flex flex-col justify-between min-h-screen">
-  <div class="space-y-4 flex-grow">
+<body>
+  <div class="container">
     <h1 class="text-3xl font-bold">Year Progress Bar</h1>
     <div class="progress-container">
       <div class="progress-bar"></div>
     </div>
-    <div class="progress-text">2024 is ##.####% Complete.</div>
+    <div class="progress-text">2024 is ##.#####% Complete.</div>
+    <footer>
+      <p>Follow me on <a href="https://twitter.com/mobeahmi" target="_blank">@mobeahmi</a></p>
+      <p>Visit my website(ko) at <a href="https://haebom.dev" target="_blank">haebom.dev</a></p>
+    </footer>
   </div>
-  <footer>
-    <p>Follow me on <a href="https://twitter.com/mobeahmi" target="_blank">@mobeahmi</a></p>
-    <p>Visit my website(ko) at <a href="https://haebom.dev" target="_blank">haebom.dev</a></p>
-  </footer>
 </body>
 </html>
