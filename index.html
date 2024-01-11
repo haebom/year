@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XSPGND1PG7"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  
+    gtag('config', 'G-XSPGND1PG7');
+  </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Year Progress Bar</title>
@@ -39,7 +48,19 @@
     background-color: #4caf50;
     width: 0%;
     border-radius: 1rem;
-    transition: width 0.1s linear;
+    background-image: linear-gradient(135deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent);
+    background-size: 40px 40px;
+    animation: progress-bar-stripes 2s linear infinite, increaseProgress 2s ease-in-out;
+  }
+  
+  @keyframes progress-bar-stripes {
+    from { background-position: 40px 0; }
+    to { background-position: 0 0; }
+  }
+  
+  @keyframes increaseProgress {
+    0% { width: 0%; }
+    100% { width: 100%; } /* 이 값을 실제 진행 상태에 맞춰 동적으로 변경해야 합니다. */
   }
 
   .progress-text {
