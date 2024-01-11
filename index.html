@@ -5,24 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Year Progress Bar</title>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body {
-    font-family: 'Roboto', sans-serif;
+  html, body {
+    height: 100%;
     margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
     justify-content: center;
-    height: 100vh;
+    align-items: center;
+    font-family: 'Roboto', sans-serif;
     background-color: #f0f0f0;
   }
 
   .container {
+    width: 100%;
+    max-width: 800px; /* Or whatever max width you want */
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
   }
 
   .progress-container {
@@ -49,8 +49,8 @@
   }
 
   footer {
-    text-align: center;
     margin-top: 20px;
+    width: 100%;
   }
 
   footer a {
@@ -86,10 +86,10 @@
       <div class="progress-bar"></div>
     </div>
     <div class="progress-text">2024 is ##.#####% Complete.</div>
-    <footer>
-      <p>Follow me on <a href="https://twitter.com/mobeahmi" target="_blank">@mobeahmi</a></p>
-      <p>Visit my website(ko) at <a href="https://haebom.dev" target="_blank">haebom.dev</a></p>
-    </footer>
   </div>
+  <footer>
+    <p>Follow me on <a href="https://twitter.com/mobeahmi" target="_blank">@mobeahmi</a></p>
+    <p>Visit my website(ko) at <a href="https://haebom.dev" target="_blank">haebom.dev</a></p>
+  </footer>
 </body>
 </html>
