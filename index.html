@@ -10,10 +10,22 @@
 
     gtag('config', 'G-XSPGND1PG7');
   </script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Year Progress Bar</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Progress</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#4caf50">
+  <link rel="apple-touch-icon" href="./maskable_icon_x192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Life Progress">
+
 <style>
   html, body {
     height: 100%;
@@ -28,7 +40,8 @@
   }
 
   .container {
-    width: 100%; /* Adjusted for better alignment */
+    width: 90%;
+    max-width: 600px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -58,32 +71,91 @@
     transition: width 0.5s ease-in-out;
   }
 
-  .progress-bar::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background: linear-gradient(to right, transparent, rgba(255,255,255,.6), transparent);
+  .auth-container {
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+
+  .auth-button {
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    background-color: #4285f4;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+  }
+
+  .auth-button:hover {
+    background-color: #357abd;
+  }
+
+  .user-info {
+    margin: 10px 0;
+    padding: 10px;
+    background: #e8f0fe;
+    border-radius: 5px;
+    display: none;
+  }
+
+  .quest-container {
     width: 100%;
-    transform: translateX(-100%);
-    animation: shimmer 2s infinite;
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
   }
 
-  @keyframes shimmer {
-    100% {
-      transform: translateX(100%);
-    }
+  .quest-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
   }
 
-  .progress-text {
-    font-size: 1.5rem;
-    font-weight: 1000;
+  .quest-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .quest-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .quest-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  .quest-item button {
+    padding: 5px 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
   }
 
   footer {
     margin-top: 20px;
+    text-align: center;
   }
 
   footer a {
@@ -95,9 +167,502 @@
   footer a:hover {
     text-decoration: underline;
   }
+
+  .life-expectancy-container {
+    width: 100%;
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
+  }
+
+  .life-progress-container {
+    width: 100%;
+    margin: 10px 0;
+  }
+
+  .life-progress-bar {
+    height: 2rem;
+    background-color: #ff9800;
+    width: 0%;
+    border-radius: 0.5rem;
+    transition: width 0.5s ease-in-out;
+  }
+
+  .quest-category {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 5px;
+  }
+
+  .quest-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 15px 0;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #4285f4;
+  }
+
+  .friend-container {
+    width: 100%;
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: none;
+  }
+
+  .friend-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .friend-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+
+  .category-select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+
+  .share-button {
+    padding: 5px 10px;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+
+  .shared-quest {
+    border-left: 4px solid #4caf50;
+    padding-left: 10px;
+  }
+
+  .friend-quest-container {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+  }
+
+  .friend-quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .cheer-button {
+    padding: 5px 10px;
+    background: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .cheer-count {
+    font-size: 0.9em;
+    color: #666;
+    margin-left: 5px;
+  }
+
+  .shared-by {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+  }
+
+  .notification-badge {
+    position: relative;
+    display: inline-block;
+  }
+
+  .notification-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ff5722;
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 12px;
+    display: none;
+  }
+
+  .notification-panel {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    width: 300px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 1000;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .notification-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+
+  .notification-item:hover {
+    background: #f5f5f5;
+  }
+
+  .notification-item.unread {
+    background: #e3f2fd;
+  }
+
+  .install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 1000;
+  }
 </style>
 <script>
+  // Firebase 구성
+  const firebaseConfig = {
+    apiKey: "AIzaSyB73bnwE9jTVqiTAvb2BvginUFAgvAcZtw",
+    authDomain: "blocks-1b622.firebaseapp.com",
+    projectId: "blocks-1b622",
+    storageBucket: "blocks-1b622.firebasestorage.app",
+    messagingSenderId: "486313931623",
+    appId: "1:486313931623:web:2c81258f6c05e2bb8d75c2",
+    measurementId: "G-QZH0VBXH25"
+  };
+
+  // Firebase 초기화
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const messaging = firebase.messaging();
+
+  // FCM 설정
+  messaging.getToken({
+    vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI' // Firebase 콘솔에서 생성한 키를 여기에 입력
+  }).then((currentToken) => {
+    if (currentToken) {
+      // 토큰이 생성되면 서버에 저장
+      if (firebase.auth().currentUser) {
+        db.collection('users').doc(firebase.auth().currentUser.uid).update({
+          fcmToken: currentToken
+        });
+      }
+    } else {
+      console.log('토큰을 생성할 수 없습니다.');
+    }
+  }).catch((err) => {
+    console.log('토큰 생성 중 에러 발생:', err);
+  });
+
+  // 포그라운드 메시지 처리
+  messaging.onMessage((payload) => {
+    console.log('메시지 수신:', payload);
+    // 알림 표시
+    new Notification(payload.notification.title, {
+      body: payload.notification.body,
+      icon: '/maskable_icon_x192.png'
+    });
+  });
+
   document.addEventListener('DOMContentLoaded', function() {
+    const auth = firebase.auth();
+    const userInfo = document.querySelector('.user-info');
+    const questContainer = document.querySelector('.quest-container');
+    const questList = document.querySelector('.quest-list');
+    const lifeExpectancyContainer = document.querySelector('.life-expectancy-container');
+    const friendContainer = document.querySelector('.friend-container');
+    
+    // 사용자 데이터 로드
+    async function loadUserData(userId) {
+      const userRef = db.collection('users').doc(userId);
+      const doc = await userRef.get();
+      
+      if (doc.exists) {
+        const userData = doc.data();
+        if (userData.birthYear) {
+          document.getElementById('birthYear').value = userData.birthYear;
+          document.getElementById('lifeExpectancy').value = userData.lifeExpectancy || 80;
+          updateLifeProgress();
+        }
+      }
+    }
+
+    // 인증 상태 관찰자 수정
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        document.getElementById('loginButton').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'inline-block';
+        userInfo.style.display = 'block';
+        questContainer.style.display = 'block';
+        lifeExpectancyContainer.style.display = 'block';
+        friendContainer.style.display = 'block';
+        userInfo.textContent = `환영합니다, ${user.email}님!`;
+        
+        // 사용자 정보 저장
+        db.collection('users').doc(user.uid).set({
+          email: user.email
+        }, { merge: true });
+
+        loadUserData(user.uid);
+        loadQuests(user.uid);
+        updateQuestStats(user.uid);
+        loadFriends(user.uid);
+        loadSharedQuests(user.uid);
+        requestNotificationPermission();
+        loadNotifications();
+      } else {
+        document.getElementById('loginButton').style.display = 'inline-block';
+        document.getElementById('logoutButton').style.display = 'none';
+        userInfo.style.display = 'none';
+        questContainer.style.display = 'none';
+        lifeExpectancyContainer.style.display = 'none';
+        friendContainer.style.display = 'none';
+        questList.innerHTML = '';
+      }
+    });
+
+    // 생년월일과 기대수명 저장
+    window.saveLifeExpectancy = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const birthYear = parseInt(document.getElementById('birthYear').value);
+      const lifeExpectancy = parseInt(document.getElementById('lifeExpectancy').value);
+
+      try {
+        await db.collection('users').doc(user.uid).set({
+          birthYear: birthYear,
+          lifeExpectancy: lifeExpectancy
+        }, { merge: true });
+        
+        updateLifeProgress();
+      } catch (error) {
+        console.error("설정 저장 에러:", error);
+        alert("설정 저장 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 인생 진행률 업데이트
+    function updateLifeProgress() {
+      const birthYear = parseInt(document.getElementById('birthYear').value);
+      const lifeExpectancy = parseInt(document.getElementById('lifeExpectancy').value);
+      const currentYear = new Date().getFullYear();
+      
+      const age = currentYear - birthYear;
+      const progress = (age / lifeExpectancy) * 100;
+      
+      const lifeProgressBar = document.querySelector('.life-progress-bar');
+      lifeProgressBar.style.width = `${Math.min(progress, 100)}%`;
+      
+      document.querySelector('.life-progress-text').textContent = 
+        `당신의 인생 ${progress.toFixed(1)}% 진행됨 (${age}세)`;
+    }
+
+    // 퀘스트 통계 업데이트
+    async function updateQuestStats(userId) {
+      const questsRef = db.collection('users').doc(userId).collection('quests');
+      const snapshot = await questsRef.get();
+      
+      let total = 0;
+      let completed = 0;
+      const categoryStats = {};
+      
+      snapshot.forEach(doc => {
+        const quest = doc.data();
+        total++;
+        if (quest.completed) completed++;
+        
+        const category = quest.category || '미분류';
+        categoryStats[category] = categoryStats[category] || { total: 0, completed: 0 };
+        categoryStats[category].total++;
+        if (quest.completed) categoryStats[category].completed++;
+      });
+      
+      document.querySelector('.total-quests').textContent = total;
+      document.querySelector('.completed-quests').textContent = completed;
+      document.querySelector('.completion-rate').textContent = 
+        total > 0 ? `${((completed/total) * 100).toFixed(1)}%` : '0%';
+      
+      // 카테고리별 통계 업데이트
+      const statsContainer = document.querySelector('.category-stats');
+      statsContainer.innerHTML = '';
+      
+      Object.entries(categoryStats).forEach(([category, stats]) => {
+        const div = document.createElement('div');
+        div.className = 'quest-category';
+        div.innerHTML = `
+          <h3>${category}</h3>
+          <p>완료: ${stats.completed}/${stats.total} (${((stats.completed/stats.total) * 100).toFixed(1)}%)</p>
+        `;
+        statsContainer.appendChild(div);
+      });
+    }
+
+    // 퀘스트 로드
+    async function loadQuests(userId) {
+      const questsRef = db.collection('users').doc(userId).collection('quests');
+      const snapshot = await questsRef.get();
+      
+      questList.innerHTML = '';
+      snapshot.forEach(doc => {
+        const quest = doc.data();
+        addQuestToList(doc.id, quest.title, quest.completed);
+      });
+    }
+
+    // 퀘스트 추가
+    window.addQuest = async (event) => {
+      event.preventDefault();
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const questInput = document.getElementById('questInput');
+      const questTitle = questInput.value.trim();
+      const category = document.getElementById('questCategory').value;
+      
+      if (questTitle) {
+        const questData = {
+          title: questTitle,
+          category: category,
+          completed: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+          const docRef = await db.collection('users').doc(user.uid)
+            .collection('quests').add(questData);
+          addQuestToList(docRef.id, questTitle, false, category);
+          questInput.value = '';
+          updateQuestStats(user.uid);
+        } catch (error) {
+          console.error("퀘스트 추가 에러:", error);
+          alert("퀘스트 추가 중 오류가 발생했습니다.");
+        }
+      }
+    };
+
+    // 퀘스트 삭제
+    window.deleteQuest = async (questId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        await db.collection('users').doc(user.uid)
+          .collection('quests').doc(questId).delete();
+        document.getElementById(`quest-${questId}`).remove();
+      } catch (error) {
+        console.error("퀘스트 삭제 에러:", error);
+        alert("퀘스트 삭제 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 퀘스트 완료 상태 토글
+    window.toggleQuest = async (questId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const questRef = db.collection('users').doc(user.uid)
+        .collection('quests').doc(questId);
+      
+      try {
+        const doc = await questRef.get();
+        const newStatus = !doc.data().completed;
+        await questRef.update({ completed: newStatus });
+        
+        const checkbox = document.querySelector(`#quest-${questId} input[type="checkbox"]`);
+        checkbox.checked = newStatus;
+      } catch (error) {
+        console.error("퀘스트 상태 변경 에러:", error);
+        alert("퀘스트 상태 변경 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 퀘스트 UI에 추가
+    function addQuestToList(id, title, completed, category, shared = false, sharedBy = null) {
+      const li = document.createElement('li');
+      li.id = `quest-${id}`;
+      li.className = `quest-item ${shared ? 'shared-quest' : ''}`;
+      
+      let shareButton = '';
+      if (!shared) {
+        shareButton = `<button onclick="shareQuest('${id}')" class="share-button">공유</button>`;
+      }
+
+      let sharedByText = '';
+      if (shared && sharedBy) {
+        sharedByText = `<div class="shared-by">공유: ${sharedBy}</div>`;
+      }
+
+      li.innerHTML = `
+        <div>
+          <input type="checkbox" ${completed ? 'checked' : ''} 
+            onchange="toggleQuest('${id}')">
+          <span>${title}</span>
+          ${sharedByText}
+        </div>
+        <div>
+          ${shareButton}
+          <button onclick="deleteQuest('${id}')" class="auth-button" style="background-color: #dc3545;">삭제</button>
+        </div>
+      `;
+      questList.appendChild(li);
+    }
+
+    // 구글 로그인 처리
+    window.googleLogin = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider)
+        .catch((error) => {
+          console.error("로그인 에러:", error);
+          alert("로그인 중 오류가 발생했습니다.");
+        });
+    };
+
+    // 로그아웃 처리
+    window.logout = () => {
+      auth.signOut()
+        .catch((error) => {
+          console.error("로그아웃 에러:", error);
+          alert("로그아웃 중 오류가 발생했습니다.");
+        });
+    };
+
     const updateProgress = () => {
       const now = new Date();
       const start = new Date(now.getFullYear(), 0, 1);
@@ -105,27 +670,563 @@
       const progress = (now - start) / (end - start);
       const progressBar = document.querySelector('.progress-bar');
       progressBar.style.width = (progress * 100).toFixed(5) + '%';
-      document.querySelector('.progress-text').textContent = `2024 is ${(progress * 100).toFixed(5)}% Complete.`;
+      document.querySelector('.progress-text').textContent = 
+        `${now.getFullYear()}년이 ${(progress * 100).toFixed(5)}% 지났습니다.`;
     };
 
-    setInterval(updateProgress, 1000); // Changed to 1 second for better performance
+    setInterval(updateProgress, 1000);
+    updateProgress();
+
+    // 친구 관련 함수들
+    async function loadFriends(userId) {
+      const friendsRef = db.collection('users').doc(userId).collection('friends');
+      const pendingRef = db.collection('users').doc(userId).collection('pendingFriends');
+      
+      // 현재 친구 목록 로드
+      const friendsSnapshot = await friendsRef.get();
+      const pendingSnapshot = await pendingRef.get();
+      
+      const friendList = document.querySelector('.friend-list');
+      friendList.innerHTML = '';
+
+      // 대기 중인 친구 요청 표시
+      pendingSnapshot.forEach(doc => {
+        const friendData = doc.data();
+        const li = document.createElement('li');
+        li.className = 'friend-item';
+        li.innerHTML = `
+          <div>
+            <span>${friendData.email}</span>
+            <span class="friend-status">(대기 중)</span>
+          </div>
+          <div>
+            <button onclick="acceptFriend('${doc.id}')" class="auth-button">수락</button>
+            <button onclick="rejectFriend('${doc.id}')" class="auth-button" style="background-color: #dc3545;">거절</button>
+          </div>
+        `;
+        friendList.appendChild(li);
+      });
+
+      // 현재 친구 목록 표시
+      friendsSnapshot.forEach(doc => {
+        const friendData = doc.data();
+        const li = document.createElement('li');
+        li.className = 'friend-item';
+        li.innerHTML = `
+          <div>
+            <span>${friendData.email}</span>
+          </div>
+          <button onclick="removeFriend('${doc.id}')" class="auth-button" style="background-color: #dc3545;">삭제</button>
+        `;
+        friendList.appendChild(li);
+      });
+    }
+
+    // 친구 추가 요청
+    window.addFriend = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const friendEmail = document.getElementById('friendEmail').value.trim();
+      if (!friendEmail) return;
+
+      try {
+        // 자기 자신을 친구로 추가하는 것을 방지
+        if (friendEmail === user.email) {
+          alert("자기 자신을 친구로 추가할 수 없습니다.");
+          return;
+        }
+
+        // 이메일로 사용자 검색
+        const usersRef = db.collection('users');
+        const snapshot = await usersRef.where('email', '==', friendEmail).get();
+
+        if (snapshot.empty) {
+          alert("해당 이메일의 사용자를 찾을 수 없습니다.");
+          return;
+        }
+
+        const friendDoc = snapshot.docs[0];
+        const friendId = friendDoc.id;
+
+        // 이미 친구인지 확인
+        const existingFriend = await db.collection('users').doc(user.uid)
+          .collection('friends').where('email', '==', friendEmail).get();
+        
+        if (!existingFriend.empty) {
+          alert("이미 친구로 등록된 사용자입니다.");
+          return;
+        }
+
+        // 친구 요청이 이미 존재하는지 확인
+        const existingRequest = await db.collection('users').doc(friendId)
+          .collection('pendingFriends').where('email', '==', user.email).get();
+        
+        if (!existingRequest.empty) {
+          alert("이미 친구 요청을 보냈습니다.");
+          return;
+        }
+
+        // 상대방의 pendingFriends에 추가
+        await db.collection('users').doc(friendId).collection('pendingFriends').add({
+          email: user.email,
+          uid: user.uid,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById('friendEmail').value = '';
+        alert("친구 요청을 보냈습니다.");
+      } catch (error) {
+        console.error("친구 추가 에러:", error);
+        alert("친구 추가 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 친구 요청 수락
+    window.acceptFriend = async (requestId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        // 요청 정보 가져오기
+        const requestRef = db.collection('users').doc(user.uid)
+          .collection('pendingFriends').doc(requestId);
+        const request = await requestRef.get();
+        const requestData = request.data();
+
+        // 양쪽 모두 friends 컬렉션에 추가
+        await db.collection('users').doc(user.uid).collection('friends').add({
+          email: requestData.email,
+          uid: requestData.uid,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection('users').doc(requestData.uid).collection('friends').add({
+          email: user.email,
+          uid: user.uid,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // pendingFriends에서 요청 삭제
+        await requestRef.delete();
+
+        // 친구 목록 새로고침
+        loadFriends(user.uid);
+      } catch (error) {
+        console.error("친구 수락 에러:", error);
+        alert("친구 수락 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 친구 요청 거절
+    window.rejectFriend = async (requestId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        // pendingFriends에서 요청 삭제
+        await db.collection('users').doc(user.uid)
+          .collection('pendingFriends').doc(requestId).delete();
+
+        // 친구 목록 새로고침
+        loadFriends(user.uid);
+      } catch (error) {
+        console.error("친구 거절 에러:", error);
+        alert("친구 거절 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 친구 삭제
+    window.removeFriend = async (friendId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      if (!confirm("정말 이 친구를 삭제하시겠습니까?")) return;
+
+      try {
+        const friendRef = db.collection('users').doc(user.uid)
+          .collection('friends').doc(friendId);
+        const friendDoc = await friendRef.get();
+        const friendData = friendDoc.data();
+
+        // 양쪽 모두에서 친구 관계 삭제
+        await friendRef.delete();
+
+        // 상대방의 친구 목록에서도 삭제
+        const otherFriendRef = db.collection('users').doc(friendData.uid)
+          .collection('friends');
+        const otherFriendSnapshot = await otherFriendRef.where('email', '==', user.email).get();
+        
+        otherFriendSnapshot.forEach(async (doc) => {
+          await doc.ref.delete();
+        });
+
+        // 친구 목록 새로고침
+        loadFriends(user.uid);
+      } catch (error) {
+        console.error("친구 삭제 에러:", error);
+        alert("친구 삭제 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 퀘스트 공유
+    window.shareQuest = async (questId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const questRef = db.collection('users').doc(user.uid)
+          .collection('quests').doc(questId);
+        const questDoc = await questRef.get();
+        const questData = questDoc.data();
+
+        // 친구 목록 가져오기
+        const friendsRef = db.collection('users').doc(user.uid).collection('friends');
+        const friendsSnapshot = await friendsRef.get();
+
+        // 각 친구에게 퀘스트 공유
+        friendsSnapshot.forEach(async (friendDoc) => {
+          const friendData = friendDoc.data();
+          await db.collection('users').doc(friendData.uid)
+            .collection('sharedQuests').add({
+              title: questData.title,
+              category: questData.category,
+              completed: questData.completed,
+              sharedBy: user.email,
+              originalQuestId: questId,
+              originalUserId: user.uid,
+              timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        alert("퀘스트가 친구들과 공유되었습니다!");
+      } catch (error) {
+        console.error("퀘스트 공유 에러:", error);
+        alert("퀘스트 공유 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 공유된 퀘스트 로드
+    async function loadSharedQuests(userId) {
+      const sharedQuestsRef = db.collection('users').doc(userId).collection('sharedQuests');
+      const snapshot = await sharedQuestsRef.get();
+      
+      const sharedQuestsContainer = document.createElement('div');
+      sharedQuestsContainer.className = 'friend-quest-container';
+      sharedQuestsContainer.innerHTML = '<h3>친구의 퀘스트</h3>';
+      
+      snapshot.forEach(doc => {
+        const questData = doc.data();
+        const questElement = document.createElement('div');
+        questElement.className = 'quest-item shared-quest';
+        questElement.innerHTML = `
+          <div class="friend-quest-header">
+            <div>
+              <span>${questData.title}</span>
+              <div class="shared-by">by ${questData.sharedBy}</div>
+            </div>
+            <div>
+              <button onclick="cheerQuest('${doc.id}', '${questData.originalUserId}')" class="cheer-button">
+                응원하기 <span class="cheer-count">${questData.cheers || 0}</span>
+              </button>
+            </div>
+          </div>
+        `;
+        sharedQuestsContainer.appendChild(questElement);
+      });
+
+      // 기존 공유 퀘스트 컨테이너가 있다면 제거
+      const existingContainer = document.querySelector('.friend-quest-container');
+      if (existingContainer) {
+        existingContainer.remove();
+      }
+
+      // 새로운 컨테이너 추가
+      questContainer.appendChild(sharedQuestsContainer);
+    }
+
+    // 퀘스트 응원하기
+    window.cheerQuest = async (questId, originalUserId) => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const questRef = db.collection('users').doc(user.uid)
+          .collection('sharedQuests').doc(questId);
+        
+        await questRef.update({
+          cheers: firebase.firestore.FieldValue.increment(1)
+        });
+
+        // 원본 퀘스트 작성자에게 알림
+        await db.collection('users').doc(originalUserId)
+          .collection('notifications').add({
+            type: 'cheer',
+            from: user.email,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+        // UI 업데이트
+        const cheerCount = document.querySelector(`#quest-${questId} .cheer-count`);
+        if (cheerCount) {
+          cheerCount.textContent = parseInt(cheerCount.textContent) + 1;
+        }
+      } catch (error) {
+        console.error("응원하기 에러:", error);
+        alert("응원하기 중 오류가 발생했습니다.");
+      }
+    };
+
+    // PWA 등록
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker 등록 성공:', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker 등록 실패:', err);
+          });
+      });
+    }
+
+    // Firebase 메시징 설정
+    const messaging = firebase.messaging();
+    
+    // 알림 권한 요청
+    async function requestNotificationPermission() {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const token = await messaging.getToken();
+          // 토큰을 서버에 저장
+          const user = auth.currentUser;
+          if (user) {
+            await db.collection('users').doc(user.uid).update({
+              notificationToken: token
+            });
+          }
+        }
+      } catch (error) {
+        console.error('알림 권한 요청 실패:', error);
+      }
+    }
+
+    // 설치 프롬프트 처리
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.querySelector('.install-prompt').style.display = 'block';
+    });
+
+    function installPWA() {
+      document.querySelector('.install-prompt').style.display = 'none';
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('사용자가 설치를 수락했습니다.');
+        }
+        deferredPrompt = null;
+      });
+    }
+
+    function dismissInstallPrompt() {
+      document.querySelector('.install-prompt').style.display = 'none';
+    }
+
+    // 알림 관련 함수들
+    let notifications = [];
+    
+    function toggleNotifications() {
+      const panel = document.querySelector('.notification-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function loadNotifications() {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const notificationsRef = db.collection('users').doc(user.uid)
+        .collection('notifications')
+        .orderBy('timestamp', 'desc')
+        .limit(20);
+
+      const snapshot = await notificationsRef.get();
+      notifications = [];
+      const notificationList = document.querySelector('.notification-list');
+      notificationList.innerHTML = '';
+
+      snapshot.forEach(doc => {
+        const notification = doc.data();
+        notifications.push({
+          id: doc.id,
+          ...notification
+        });
+
+        const div = document.createElement('div');
+        div.className = `notification-item ${notification.read ? '' : 'unread'}`;
+        div.onclick = () => markNotificationAsRead(doc.id);
+        
+        let message = '';
+        switch(notification.type) {
+          case 'cheer':
+            message = `${notification.from}님이 회원님의 퀘스트를 응원했습니다!`;
+            break;
+          case 'friend_request':
+            message = `${notification.from}님이 친구 요청을 보냈습니다.`;
+            break;
+          case 'quest_complete':
+            message = `${notification.questTitle} 퀘스트를 완료했습니다!`;
+            break;
+        }
+
+        div.innerHTML = `
+          <div>${message}</div>
+          <small>${new Date(notification.timestamp.toDate()).toLocaleString()}</small>
+        `;
+        notificationList.appendChild(div);
+      });
+
+      updateNotificationBadge();
+    }
+
+    function updateNotificationBadge() {
+      const unreadCount = notifications.filter(n => !n.read).length;
+      const badge = document.querySelector('.notification-count');
+      badge.textContent = unreadCount;
+      badge.style.display = unreadCount > 0 ? 'block' : 'none';
+    }
+
+    async function markNotificationAsRead(notificationId) {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      await db.collection('users').doc(user.uid)
+        .collection('notifications')
+        .doc(notificationId)
+        .update({
+          read: true
+        });
+
+      const notification = notifications.find(n => n.id === notificationId);
+      if (notification) {
+        notification.read = true;
+      }
+
+      document.querySelector(`[data-notification-id="${notificationId}"]`)
+        ?.classList.remove('unread');
+      
+      updateNotificationBadge();
+    }
+
+    // Firebase 메시징 포그라운드 핸들러
+    messaging.onMessage((payload) => {
+      const notification = payload.notification;
+      new Notification(notification.title, {
+        body: notification.body,
+        icon: '/icons/icon-192x192.png'
+      });
+      loadNotifications();
+    });
   });
 </script>
 </head>
 <body>
   <div class="container">
-    <h1 class="text-3xl font-bold">Year Progress Bar</h1>
+    <h1>Life Progress</h1>
+    
+    <div class="auth-container">
+      <div class="user-info"></div>
+      <button id="loginButton" class="auth-button" onclick="googleLogin()">Google로 로그인</button>
+      <button id="logoutButton" class="auth-button" onclick="logout()" style="display: none;">로그아웃</button>
+    </div>
+
+    <div class="life-expectancy-container">
+      <h2>인생 설정</h2>
+      <div class="quest-form">
+        <input type="number" id="birthYear" placeholder="출생연도" class="quest-input" required>
+        <input type="number" id="lifeExpectancy" placeholder="기대수명" class="quest-input" value="80" required>
+        <button onclick="saveLifeExpectancy()" class="auth-button">설정 저장</button>
+      </div>
+      <div class="life-progress-container">
+        <div class="life-progress-bar"></div>
+      </div>
+      <div class="life-progress-text"></div>
+    </div>
+
     <div class="progress-container">
       <div class="progress-bar"></div>
     </div>
-    <div class="progress-text">2024 is ##.#####% Complete.</div>
-    <br>
-    <br>
-    <br>
+    <div class="progress-text"></div>
+
+    <div class="quest-container">
+      <h2>나의 퀘스트</h2>
+      <div class="quest-stats">
+        <div class="stat-item">
+          <div class="stat-value total-quests">0</div>
+          <div>전체 퀘스트</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value completed-quests">0</div>
+          <div>완료된 퀘스트</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value completion-rate">0%</div>
+          <div>달성률</div>
+        </div>
+      </div>
+      
+      <form class="quest-form" onsubmit="addQuest(event)">
+        <select id="questCategory" class="category-select">
+          <option value="일상">일상</option>
+          <option value="건강">건강</option>
+          <option value="커리어">커리어</option>
+          <option value="취미">취미</option>
+          <option value="관계">관계</option>
+          <option value="기타">기타</option>
+        </select>
+        <input type="text" id="questInput" class="quest-input" placeholder="새로운 퀘스트를 입력하세요" required>
+        <button type="submit" class="auth-button">퀘스트 추가</button>
+      </form>
+      
+      <div class="category-stats"></div>
+      <ul class="quest-list"></ul>
+    </div>
+
+    <div class="friend-container">
+      <h2>친구</h2>
+      <div class="quest-form">
+        <input type="email" id="friendEmail" class="quest-input" placeholder="친구의 이메일을 입력하세요">
+        <button onclick="addFriend()" class="auth-button">친구 추가</button>
+      </div>
+      <ul class="friend-list"></ul>
+    </div>
+
     <footer>
       <p>Follow me on <a href="https://www.instagram.com/haebom.exe/" target="_blank">@mobeahmi</a></p>
       <p>Visit my website(kr-ko) at <a href="https://haebom.dev" target="_blank">haebom.dev</a></p>
     </footer>
+  </div>
+
+  <!-- 알림 버튼 추가 -->
+  <div class="notification-badge">
+    <button onclick="toggleNotifications()" class="auth-button">
+      알림
+      <span class="notification-count">0</span>
+    </button>
+  </div>
+
+  <!-- 알림 패널 -->
+  <div class="notification-panel">
+    <div class="notification-list"></div>
+  </div>
+
+  <!-- 설치 프롬프트 -->
+  <div class="install-prompt">
+    <p>Life Progress 앱을 설치하시겠습니까?</p>
+    <button onclick="installPWA()" class="auth-button">설치</button>
+    <button onclick="dismissInstallPrompt()" class="auth-button" style="background-color: #666;">나중에</button>
   </div>
 </body>
 </html>
