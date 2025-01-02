@@ -1188,7 +1188,10 @@
 
   // FCM 설정
   messaging.getToken({
-    vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI' // Firebase 콘솔에서 생성한 키를 여기에 입력
+    vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
+    serviceWorkerRegistration: await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
+      scope: '/year/'
+    })
   }).then((currentToken) => {
     if (currentToken) {
       // 토큰이 생성되면 서버에 저장
@@ -1837,16 +1840,18 @@
       }
     };
 
-    // PWA 등록
+    // PWA 서비스 워커 등록 수정
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(registration => {
-            console.log('ServiceWorker 등록 성공:', registration.scope);
-          })
-          .catch(err => {
-            console.log('ServiceWorker 등록 실패:', err);
-          });
+        navigator.serviceWorker.register('/year/sw.js', {
+          scope: '/year/'
+        })
+        .then(registration => {
+          console.log('ServiceWorker 등록 성공:', registration.scope);
+        })
+        .catch(err => {
+          console.log('ServiceWorker 등록 실패:', err);
+        });
       });
     }
 
