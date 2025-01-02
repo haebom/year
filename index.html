@@ -1225,10 +1225,10 @@
   let db;
   let messaging;
 
-  // DOMContentLoaded 이벤트 핸들러
-  document.addEventListener('DOMContentLoaded', async function() {
+  // Firebase 초기화 및 Messaging 설정을 위한 함수
+  async function initializeFirebaseMessaging() {
     try {
-      // Firebase 초기화 전에 기존 인스턴스 확인
+      // Firebase 초기화가 되어있지 않다면 초기화
       if (!firebase.apps.length) {
         firebase.initializeApp({
           apiKey: "AIzaSyB73bnwE9jTVqiTAvb2BvginUFAgvAcZtw",
@@ -1241,7 +1241,57 @@
         });
       }
 
-      // Firebase 서비스 초기화
+      // Messaging 초기화
+      messaging = firebase.messaging();
+
+      // 서비스 워커 등록
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
+            scope: '/year/',
+            updateViaCache: 'none'
+          });
+          console.log('ServiceWorker 등록 성공:', registration.scope);
+
+          // FCM 설정
+          const currentToken = await messaging.getToken({
+            vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
+            serviceWorkerRegistration: registration
+          });
+
+          if (currentToken) {
+            console.log('FCM 토큰 생성 성공:', currentToken);
+            // 토큰을 사용자 문서에 저장
+            if (auth.currentUser) {
+              await db.collection('users').doc(auth.currentUser.uid).update({
+                fcmToken: currentToken
+              });
+            }
+          }
+
+          // 포그라운드 메시지 핸들러 등록
+          messaging.onMessage((payload) => {
+            console.log('포그라운드 메시지 수신:', payload);
+            showToast(payload.notification.title);
+          });
+
+          return true;
+        } catch (error) {
+          console.error('ServiceWorker 등록 실패:', error);
+          return false;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Firebase Messaging 초기화 실패:', error);
+      return false;
+    }
+  }
+
+  // DOMContentLoaded 이벤트 핸들러
+  document.addEventListener('DOMContentLoaded', async function() {
+    try {
+      // Firebase 인증 및 Firestore 초기화
       auth = firebase.auth();
       db = firebase.firestore();
 
@@ -1261,37 +1311,9 @@
       });
 
       // Firebase Messaging 초기화
-      try {
-        messaging = firebase.messaging();
-        
-        // 서비스 워커 등록
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
-            scope: '/year/',
-            updateViaCache: 'none'
-          });
-          
-          // FCM 설정
-          const currentToken = await messaging.getToken({
-            vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
-            serviceWorkerRegistration: registration
-          });
+      await initializeFirebaseMessaging();
 
-          if (currentToken) {
-            console.log('FCM 토큰 생성 성공:', currentToken);
-          }
-
-          // 포그라운드 메시지 핸들러
-          messaging.onMessage((payload) => {
-            console.log('메시지 수신:', payload);
-            showToast(payload.notification.title);
-          });
-        }
-      } catch (error) {
-        console.log('Firebase Messaging 초기화 실패:', error);
-      }
-
-      // 구글 로그인 함수 수정
+      // 구글 로그인 함수
       window.googleLogin = async function() {
         try {
           const provider = new firebase.auth.GoogleAuthProvider();
@@ -1306,7 +1328,7 @@
         }
       };
 
-      // 로그아웃 함수 수정
+      // 로그아웃 함수
       window.handleLogout = async function() {
         try {
           await auth.signOut();
