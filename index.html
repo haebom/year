@@ -1150,6 +1150,24 @@
   .action-button.primary:hover {
     opacity: 0.9;
   }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: transform 0.3s ease-out;
+    z-index: 9999;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
 </style>
 <script>
   // Firebase 구성
@@ -2058,8 +2076,9 @@
       const userDoc = await db.collection('users').doc(userId).get();
       const userData = userDoc.data();
       
-      if (!userData.birthYear || !userData.lifeExpectancy) {
-        showModal('initial-setup-modal');
+      if (!userData.birthDate || !userData.lifeExpectancy) {
+        const modal = document.querySelector('.initial-setup-modal');
+        modal.style.display = 'block';
       }
     }
 
@@ -2070,24 +2089,28 @@
       const user = auth.currentUser;
       if (!user) return;
 
-      const birthYear = parseInt(document.getElementById('initialBirthYear').value);
+      const birthDate = document.getElementById('initialBirthDate').value;
       const lifeExpectancy = parseInt(document.getElementById('initialLifeExpectancy').value);
 
       try {
         await db.collection('users').doc(user.uid).update({
-          birthYear: birthYear,
+          birthDate: birthDate,
           lifeExpectancy: lifeExpectancy,
           setupCompleted: true
         });
 
-        hideModal('initial-setup-modal');
+        // 모달 닫기
+        const modal = document.querySelector('.initial-setup-modal');
+        modal.style.display = 'none';
         
-        // 시계와 통계 업데이트를 위한 전역 변수 업데이트
-        window.birthDate = new Date(birthYear, 0, 1);
+        // 전역 변수 업데이트
+        window.birthDate = new Date(birthDate);
         window.lifeExpectancy = lifeExpectancy;
         
         // UI 업데이트
         updateClock();
+        updateProgress();
+        showToast('설정이 저장되었습니다.');
       } catch (error) {
         console.error("초기 설정 저장 에러:", error);
         alert("설정 저장 중 오류가 발생했습니다.");
@@ -2465,6 +2488,25 @@
         <i class="fas fa-cog"></i>
       </button>
     `;
+
+    // Toast 메시지 표시 함수 추가
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 100);
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 300);
+      }, 3000);
+    }
   });
 </script>
 </head>
@@ -2597,8 +2639,8 @@
         <p>더 나은 경험을 위해 몇 가지 정보가 필요합니다.</p>
         <form id="initialSetupForm" class="setup-form">
           <div class="form-group">
-            <label for="initialBirthYear">출생연도</label>
-            <input type="number" id="initialBirthYear" required min="1900" max="2024" />
+            <label for="initialBirthDate">생년월일</label>
+            <input type="date" id="initialBirthDate" required />
           </div>
           <div class="form-group">
             <label for="initialLifeExpectancy">기대수명 (년)</label>
