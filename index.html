@@ -1215,9 +1215,23 @@
   });
 
   document.addEventListener('DOMContentLoaded', function() {
-    // Firebase 초기화
+    // Firebase 초기화가 완료되었는지 확인
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    
     const auth = firebase.auth();
     const db = firebase.firestore();
+    
+    // Firestore 오프라인 지원 활성화
+    db.enablePersistence()
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+          console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+        } else if (err.code == 'unimplemented') {
+          console.log('The current browser does not support all of the features required to enable persistence');
+        }
+      });
     
     // DOM 요소
     const progressBar = document.querySelector('.progress-bar');
@@ -1386,44 +1400,37 @@
         `당신의 인생 ${progress.toFixed(1)}% 진행됨 (${age}세)`;
     }
 
-    // 퀘스트 통계 업데이트
+    // 퀘스트 통계 업데이트 함수 수정
     async function updateQuestStats(userId) {
-      const questsRef = db.collection('users').doc(userId).collection('quests');
-      const snapshot = await questsRef.get();
-      
-      let total = 0;
-      let completed = 0;
-      const categoryStats = {};
-      
-      snapshot.forEach(doc => {
-        const quest = doc.data();
-        total++;
-        if (quest.completed) completed++;
+      const questStatsContainer = document.querySelector('.quest-stats-container');
+      if (!questStatsContainer) return; // 컨테이너가 없으면 함수 종료
+
+      try {
+        const questsRef = db.collection('users').doc(userId).collection('quests');
+        const snapshot = await questsRef.get();
         
-        const category = quest.category || '미분류';
-        categoryStats[category] = categoryStats[category] || { total: 0, completed: 0 };
-        categoryStats[category].total++;
-        if (quest.completed) categoryStats[category].completed++;
-      });
-      
-      document.querySelector('.total-quests').textContent = total;
-      document.querySelector('.completed-quests').textContent = completed;
-      document.querySelector('.completion-rate').textContent = 
-        total > 0 ? `${((completed/total) * 100).toFixed(1)}%` : '0%';
-      
-      // 카테고리별 통계 업데이트
-      const statsContainer = document.querySelector('.category-stats');
-      statsContainer.innerHTML = '';
-      
-      Object.entries(categoryStats).forEach(([category, stats]) => {
-        const div = document.createElement('div');
-        div.className = 'quest-category';
-        div.innerHTML = `
-          <h3>${category}</h3>
-          <p>완료: ${stats.completed}/${stats.total} (${((stats.completed/stats.total) * 100).toFixed(1)}%)</p>
-        `;
-        statsContainer.appendChild(div);
-      });
+        let total = 0;
+        let completed = 0;
+        
+        snapshot.forEach(doc => {
+          const quest = doc.data();
+          total++;
+          if (quest.completed) completed++;
+        });
+        
+        // 통계 요소들이 존재하는지 확인 후 업데이트
+        const totalElement = document.querySelector('.total-quests');
+        const completedElement = document.querySelector('.completed-quests');
+        const rateElement = document.querySelector('.completion-rate');
+        
+        if (totalElement) totalElement.textContent = total;
+        if (completedElement) completedElement.textContent = completed;
+        if (rateElement) {
+          rateElement.textContent = total > 0 ? `${((completed/total) * 100).toFixed(1)}%` : '0%';
+        }
+      } catch (error) {
+        console.error('퀘스트 통계 업데이트 오류:', error);
+      }
     }
 
     // 퀘스트 로드
@@ -2082,38 +2089,43 @@
       }
     }
 
-    // 초기 설정 폼 제출 처리
-    document.getElementById('initialSetupForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const user = auth.currentUser;
-      if (!user) return;
+    // 초기 설정 폼 제출 처리 수정
+    document.addEventListener('DOMContentLoaded', function() {
+      const initialSetupForm = document.getElementById('initialSetupForm');
+      if (initialSetupForm) {
+        initialSetupForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const user = auth.currentUser;
+          if (!user) return;
 
-      const birthDate = document.getElementById('initialBirthDate').value;
-      const lifeExpectancy = parseInt(document.getElementById('initialLifeExpectancy').value);
+          const birthDate = document.getElementById('initialBirthDate').value;
+          const lifeExpectancy = parseInt(document.getElementById('initialLifeExpectancy').value);
 
-      try {
-        await db.collection('users').doc(user.uid).update({
-          birthDate: birthDate,
-          lifeExpectancy: lifeExpectancy,
-          setupCompleted: true
+          try {
+            await db.collection('users').doc(user.uid).update({
+              birthDate: birthDate,
+              lifeExpectancy: lifeExpectancy,
+              setupCompleted: true
+            });
+
+            // 모달 닫기
+            const modal = document.querySelector('.initial-setup-modal');
+            if (modal) modal.style.display = 'none';
+            
+            // 전역 변수 업데이트
+            window.birthDate = new Date(birthDate);
+            window.lifeExpectancy = lifeExpectancy;
+            
+            // UI 업데이트
+            updateClock();
+            updateProgress();
+            showToast('설정이 저장되었습니다.');
+          } catch (error) {
+            console.error("초기 설정 저장 에러:", error);
+            showToast("설정 저장 중 오류가 발생했습니다.");
+          }
         });
-
-        // 모달 닫기
-        const modal = document.querySelector('.initial-setup-modal');
-        modal.style.display = 'none';
-        
-        // 전역 변수 업데이트
-        window.birthDate = new Date(birthDate);
-        window.lifeExpectancy = lifeExpectancy;
-        
-        // UI 업데이트
-        updateClock();
-        updateProgress();
-        showToast('설정이 저장되었습니다.');
-      } catch (error) {
-        console.error("초기 설정 저장 에러:", error);
-        alert("설정 저장 중 오류가 발생했습니다.");
       }
     });
 
