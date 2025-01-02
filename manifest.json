@@ -2,7 +2,7 @@
   "name": "Life Progress",
   "short_name": "Life Progress",
   "description": "인생의 진행 상황과 목표를 관리하는 앱",
-  "start_url": "/",
+  "start_url": "/year/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4caf50",
