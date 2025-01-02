@@ -1181,106 +1181,107 @@
     measurementId: "G-QZH0VBXH25"
   };
 
-  // Firebase 초기화 및 설정 부분 수정
+  // Firebase 초기화 및 전역 변수 선언
+  let auth;
+  let db;
+  let messaging;
+
+  // DOMContentLoaded 이벤트 핸들러
   document.addEventListener('DOMContentLoaded', async function() {
-    // Firebase 초기화
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const messaging = firebase.messaging();
-
-    // 서비스 워커 등록
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
-          scope: '/year/'
-        });
-        
-        // FCM 설정
-        const currentToken = await messaging.getToken({
-          vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
-          serviceWorkerRegistration: registration
-        });
-
-        if (currentToken && auth.currentUser) {
-          await db.collection('users').doc(auth.currentUser.uid).update({
-            fcmToken: currentToken
-          });
-        }
-      } catch (error) {
-        console.error('서비스 워커 등록 실패:', error);
+    try {
+      // Firebase 초기화
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
       }
-    }
-
-    // 구글 로그인 함수
-    window.googleLogin = async () => {
-      try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await auth.signInWithPopup(provider);
-      } catch (error) {
-        console.error("로그인 에러:", error);
-        showToast("로그인 중 오류가 발생했습니다.");
-      }
-    };
-
-    // 로그아웃 함수
-    window.handleLogout = async () => {
-      try {
-        await auth.signOut();
-        showToast("로그아웃되었습니다.");
-      } catch (error) {
-        console.error("로그아웃 에러:", error);
-        showToast("로그아웃 중 오류가 발생했습니다.");
-      }
-    };
-
-    // 인증 상태 관찰자
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        document.getElementById('loginButton').style.display = 'none';
-        document.getElementById('logoutButton').style.display = 'inline-block';
-        
-        try {
-          await db.collection('users').doc(user.uid).set({
-            email: user.email,
-            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
-
-          await loadUserData(user.uid);
-          await checkInitialSetup(user.uid);
-        } catch (error) {
-          console.error("사용자 데이터 로드 에러:", error);
-          showToast("데이터 로드 중 오류가 발생했습니다.");
-        }
-      } else {
-        document.getElementById('loginButton').style.display = 'inline-block';
-        document.getElementById('logoutButton').style.display = 'none';
-        resetUI();
-      }
-    });
-
-    // UI 초기화 함수
-    function resetUI() {
-      const elements = [
-        '.user-info',
-        '.quest-container',
-        '.life-expectancy-container',
-        '.friend-container'
-      ];
       
-      elements.forEach(selector => {
-        const element = document.querySelector(selector);
-        if (element) {
-          element.style.display = 'none';
+      auth = firebase.auth();
+      db = firebase.firestore();
+      messaging = firebase.messaging();
+
+      // 구글 로그인 함수를 전역 스코프에 정의
+      window.googleLogin = async function() {
+        try {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          await auth.signInWithPopup(provider);
+          showToast('로그인되었습니다.');
+        } catch (error) {
+          console.error("로그인 에러:", error);
+          showToast("로그인 중 오류가 발생했습니다.");
+        }
+      };
+
+      // 로그아웃 함수를 전역 스코프에 정의
+      window.handleLogout = async function() {
+        try {
+          await auth.signOut();
+          showToast('로그아웃되었습니다.');
+        } catch (error) {
+          console.error("로그아웃 에러:", error);
+          showToast("로그아웃 중 오류가 발생했습니다.");
+        }
+      };
+
+      // 서비스 워커 등록
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
+            scope: '/year/'
+          });
+          console.log('ServiceWorker 등록 성공:', registration.scope);
+
+          // FCM 설정
+          const currentToken = await messaging.getToken({
+            vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
+            serviceWorkerRegistration: registration
+          });
+
+          if (currentToken && auth.currentUser) {
+            await db.collection('users').doc(auth.currentUser.uid).update({
+              fcmToken: currentToken
+            });
+          }
+        } catch (error) {
+          console.error('서비스 워커 등록 실패:', error);
+        }
+      }
+
+      // 인증 상태 관찰자
+      auth.onAuthStateChanged(async (user) => {
+        if (user) {
+          document.getElementById('loginButton').style.display = 'none';
+          document.getElementById('logoutButton').style.display = 'inline-block';
+          
+          try {
+            await db.collection('users').doc(user.uid).set({
+              email: user.email,
+              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            await loadUserData(user.uid);
+            await checkInitialSetup(user.uid);
+          } catch (error) {
+            console.error("사용자 데이터 로드 에러:", error);
+            showToast("데이터 로드 중 오류가 발생했습니다.");
+          }
+        } else {
+          document.getElementById('loginButton').style.display = 'inline-block';
+          document.getElementById('logoutButton').style.display = 'none';
+          resetUI();
         }
       });
 
-      if (document.querySelector('.quest-list')) {
-        document.querySelector('.quest-list').innerHTML = '';
-      }
+      // 포그라운드 메시지 핸들러
+      messaging.onMessage((payload) => {
+        console.log('메시지 수신:', payload);
+        new Notification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: '/year/maskable_icon_x192.png'
+        });
+      });
+
+    } catch (error) {
+      console.error('Firebase 초기화 에러:', error);
+      showToast('앱 초기화 중 오류가 발생했습니다.');
     }
   });
 
