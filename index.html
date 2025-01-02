@@ -1181,30 +1181,107 @@
     measurementId: "G-QZH0VBXH25"
   };
 
-  // Firebase 초기화
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const messaging = firebase.messaging();
-
-  // FCM 설정
-  messaging.getToken({
-    vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
-    serviceWorkerRegistration: await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
-      scope: '/year/'
-    })
-  }).then((currentToken) => {
-    if (currentToken) {
-      // 토큰이 생성되면 서버에 저장
-      if (firebase.auth().currentUser) {
-        db.collection('users').doc(firebase.auth().currentUser.uid).update({
-          fcmToken: currentToken
-        });
-      }
-    } else {
-      console.log('토큰을 생성할 수 없습니다.');
+  // Firebase 초기화 및 설정 부분 수정
+  document.addEventListener('DOMContentLoaded', async function() {
+    // Firebase 초기화
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
     }
-  }).catch((err) => {
-    console.log('토큰 생성 중 에러 발생:', err);
+    
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const messaging = firebase.messaging();
+
+    // 서비스 워커 등록
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
+          scope: '/year/'
+        });
+        
+        // FCM 설정
+        const currentToken = await messaging.getToken({
+          vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
+          serviceWorkerRegistration: registration
+        });
+
+        if (currentToken && auth.currentUser) {
+          await db.collection('users').doc(auth.currentUser.uid).update({
+            fcmToken: currentToken
+          });
+        }
+      } catch (error) {
+        console.error('서비스 워커 등록 실패:', error);
+      }
+    }
+
+    // 구글 로그인 함수
+    window.googleLogin = async () => {
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+      } catch (error) {
+        console.error("로그인 에러:", error);
+        showToast("로그인 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 로그아웃 함수
+    window.handleLogout = async () => {
+      try {
+        await auth.signOut();
+        showToast("로그아웃되었습니다.");
+      } catch (error) {
+        console.error("로그아웃 에러:", error);
+        showToast("로그아웃 중 오류가 발생했습니다.");
+      }
+    };
+
+    // 인증 상태 관찰자
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        document.getElementById('loginButton').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'inline-block';
+        
+        try {
+          await db.collection('users').doc(user.uid).set({
+            email: user.email,
+            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+
+          await loadUserData(user.uid);
+          await checkInitialSetup(user.uid);
+        } catch (error) {
+          console.error("사용자 데이터 로드 에러:", error);
+          showToast("데이터 로드 중 오류가 발생했습니다.");
+        }
+      } else {
+        document.getElementById('loginButton').style.display = 'inline-block';
+        document.getElementById('logoutButton').style.display = 'none';
+        resetUI();
+      }
+    });
+
+    // UI 초기화 함수
+    function resetUI() {
+      const elements = [
+        '.user-info',
+        '.quest-container',
+        '.life-expectancy-container',
+        '.friend-container'
+      ];
+      
+      elements.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+          element.style.display = 'none';
+        }
+      });
+
+      if (document.querySelector('.quest-list')) {
+        document.querySelector('.quest-list').innerHTML = '';
+      }
+    }
   });
 
   // 포그라운드 메시지 처리
@@ -1261,60 +1338,6 @@
     // 초기 업데이트 및 인터벌 설정
     updateProgress();
     setInterval(updateProgress, 1000);
-
-    // 인증 상태 관찰자
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            document.getElementById('loginButton').style.display = 'none';
-            document.getElementById('logoutButton').style.display = 'inline-block';
-            userInfo.style.display = 'block';
-            questContainer.style.display = 'block';
-            lifeExpectancyContainer.style.display = 'block';
-            friendContainer.style.display = 'block';
-            userInfo.textContent = `환영합니다, ${user.email}님!`;
-            
-            // 사용자 정보 저장
-            db.collection('users').doc(user.uid).set({
-                email: user.email
-            }, { merge: true });
-
-            loadUserData(user.uid);
-            loadQuests(user.uid);
-            updateQuestStats(user.uid);
-            loadFriends(user.uid);
-            loadSharedQuests(user.uid);
-            requestNotificationPermission();
-            loadNotifications();
-            checkInitialSetup(user.uid);
-        } else {
-            document.getElementById('loginButton').style.display = 'inline-block';
-            document.getElementById('logoutButton').style.display = 'none';
-            userInfo.style.display = 'none';
-            questContainer.style.display = 'none';
-            lifeExpectancyContainer.style.display = 'none';
-            friendContainer.style.display = 'none';
-            questList.innerHTML = '';
-        }
-    });
-
-    // 구글 로그인
-    window.googleLogin = () => {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider)
-            .catch((error) => {
-                console.error("로그인 에러:", error);
-                alert("로그인 중 오류가 발생했습니다.");
-            });
-    };
-
-    // 로그아웃
-    window.logout = () => {
-        auth.signOut()
-            .catch((error) => {
-                console.error("로그아웃 에러:", error);
-                alert("로그아웃 중 오류가 발생했습니다.");
-            });
-    };
 
     // 사용자 데이터 로드
     async function loadUserData(userId) {
@@ -2532,8 +2555,8 @@
     <div class="header">
         <div class="header-left"></div>
         <div class="header-right">
-            <button id="loginButton" class="action-button" onclick="googleLogin()">로그인</button>
-            <button id="logoutButton" class="action-button" style="display: none;" onclick="logout()">로그아웃</button>
+            <button id="loginButton" class="action-button" onclick="window.googleLogin()">로그인</button>
+            <button id="logoutButton" class="action-button" style="display: none;" onclick="window.handleLogout()">로그아웃</button>
         </div>
     </div>
 
