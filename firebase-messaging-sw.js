@@ -1,15 +1,8 @@
-// Firebase 앱 구성
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating.');
-});
-
+// Firebase SDK 가져오기
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
+// Firebase 구성
 firebase.initializeApp({
   apiKey: "AIzaSyB73bnwE9jTVqiTAvb2BvginUFAgvAcZtw",
   authDomain: "blocks-1b622.firebaseapp.com",
@@ -20,40 +13,21 @@ firebase.initializeApp({
   measurementId: "G-QZH0VBXH25"
 });
 
+// Firebase Messaging 인스턴스 가져오기
 const messaging = firebase.messaging();
 
-// 백그라운드 메시지 처리
+// 백그라운드 메시지 핸들러
 messaging.onBackgroundMessage((payload) => {
   console.log('백그라운드 메시지 수신:', payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: '/year/maskable_icon_x192.png',
-    badge: '/year/maskable_icon_x72.png',
-    data: payload.data || {}
+    icon: '/maskable_icon_x192.png',
+    badge: '/maskable_icon_x192.png',
+    tag: 'notification',
+    data: payload.data
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
-// 알림 클릭 처리
-self.addEventListener('notificationclick', (event) => {
-  console.log('알림 클릭:', event);
-
-  event.notification.close();
-
-  // 알림 클릭시 앱 열기
-  event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    })
-    .then((clientList) => {
-      if (clientList.length > 0) {
-        return clientList[0].focus();
-      }
-      return clients.openWindow('/year/');
-    })
-  );
 }); 
