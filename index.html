@@ -1181,6 +1181,45 @@
     measurementId: "G-QZH0VBXH25"
   };
 
+  // 전역 함수 정의
+  function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 100);
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  }
+
+  function resetUI() {
+    const elements = [
+      '.user-info',
+      '.quest-container',
+      '.life-expectancy-container',
+      '.friend-container'
+    ];
+    
+    elements.forEach(selector => {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.style.display = 'none';
+      }
+    });
+
+    if (document.querySelector('.quest-list')) {
+      document.querySelector('.quest-list').innerHTML = '';
+    }
+  }
+
   // Firebase 초기화 및 전역 변수 선언
   let auth;
   let db;
@@ -1196,7 +1235,22 @@
       
       auth = firebase.auth();
       db = firebase.firestore();
-      messaging = firebase.messaging();
+
+      // Firebase Messaging 초기화 시도
+      try {
+        messaging = firebase.messaging();
+        
+        // 포그라운드 메시지 핸들러
+        messaging.onMessage((payload) => {
+          console.log('메시지 수신:', payload);
+          new Notification(payload.notification.title, {
+            body: payload.notification.body,
+            icon: '/year/maskable_icon_x192.png'
+          });
+        });
+      } catch (error) {
+        console.log('Firebase Messaging 초기화 실패:', error);
+      }
 
       // 구글 로그인 함수를 전역 스코프에 정의
       window.googleLogin = async function() {
@@ -1221,30 +1275,6 @@
         }
       };
 
-      // 서비스 워커 등록
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
-            scope: '/year/'
-          });
-          console.log('ServiceWorker 등록 성공:', registration.scope);
-
-          // FCM 설정
-          const currentToken = await messaging.getToken({
-            vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
-            serviceWorkerRegistration: registration
-          });
-
-          if (currentToken && auth.currentUser) {
-            await db.collection('users').doc(auth.currentUser.uid).update({
-              fcmToken: currentToken
-            });
-          }
-        } catch (error) {
-          console.error('서비스 워커 등록 실패:', error);
-        }
-      }
-
       // 인증 상태 관찰자
       auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -1268,15 +1298,6 @@
           document.getElementById('logoutButton').style.display = 'none';
           resetUI();
         }
-      });
-
-      // 포그라운드 메시지 핸들러
-      messaging.onMessage((payload) => {
-        console.log('메시지 수신:', payload);
-        new Notification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: '/year/maskable_icon_x192.png'
-        });
       });
 
     } catch (error) {
@@ -2547,6 +2568,38 @@
           document.body.removeChild(toast);
         }, 300);
       }, 3000);
+    }
+
+    // Firebase 초기화 후에 서비스 워커 등록
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/year/firebase-messaging-sw.js', {
+            scope: '/year/'
+          });
+          console.log('ServiceWorker 등록 성공:', registration.scope);
+
+          // Firebase Messaging이 초기화된 경우에만 토큰 요청
+          if (messaging) {
+            try {
+              const currentToken = await messaging.getToken({
+                vapidKey: 'BP4wdRA9DJ899-SilAiy_Qiu_idCev8FpbgYnALT7_n-XjfxLnjAHSXvYraMVRoK4dN09b55Abd-AV4X_zO3jrI',
+                serviceWorkerRegistration: registration
+              });
+
+              if (currentToken && auth.currentUser) {
+                await db.collection('users').doc(auth.currentUser.uid).update({
+                  fcmToken: currentToken
+                });
+              }
+            } catch (error) {
+              console.error('FCM 토큰 생성 실패:', error);
+            }
+          }
+        } catch (error) {
+          console.error('ServiceWorker 등록 실패:', error);
+        }
+      });
     }
   });
 </script>
