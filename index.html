@@ -1089,6 +1089,67 @@
   .danger-button:hover {
     background-color: var(--danger-color-dark);
   }
+
+  /* Add these styles after the existing CSS variables */
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .header-right {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+
+  .progress-container {
+    background: var(--border-color);
+    border-radius: var(--radius-full);
+    height: 4px;
+    margin: var(--spacing-lg) 0;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    background: var(--primary-color);
+    height: 100%;
+    width: 0;
+    transition: width 0.3s ease;
+  }
+
+  .progress-text {
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
+  }
+
+  .action-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--card-background);
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .action-button:hover {
+    background: var(--border-color);
+  }
+
+  .action-button.primary {
+    background: var(--primary-color);
+    color: white;
+  }
+
+  .action-button.primary:hover {
+    opacity: 0.9;
+  }
 </style>
 <script>
   // Firebase 구성
@@ -1136,13 +1197,90 @@
   });
 
   document.addEventListener('DOMContentLoaded', function() {
+    // Firebase 초기화
     const auth = firebase.auth();
+    const db = firebase.firestore();
+    
+    // DOM 요소
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.querySelector('.progress-text');
     const userInfo = document.querySelector('.user-info');
     const questContainer = document.querySelector('.quest-container');
     const questList = document.querySelector('.quest-list');
     const lifeExpectancyContainer = document.querySelector('.life-expectancy-container');
     const friendContainer = document.querySelector('.friend-container');
     
+    // 진행률 업데이트 함수
+    function updateProgress() {
+        if (!progressBar || !progressText) return;
+        
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 1);
+        const end = new Date(now.getFullYear() + 1, 0, 1);
+        const progress = (now - start) / (end - start);
+        
+        progressBar.style.width = (progress * 100).toFixed(5) + '%';
+        progressText.textContent = `${now.getFullYear()}년이 ${(progress * 100).toFixed(5)}% 지났습니다.`;
+    }
+
+    // 초기 업데이트 및 인터벌 설정
+    updateProgress();
+    setInterval(updateProgress, 1000);
+
+    // 인증 상태 관찰자
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            document.getElementById('loginButton').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'inline-block';
+            userInfo.style.display = 'block';
+            questContainer.style.display = 'block';
+            lifeExpectancyContainer.style.display = 'block';
+            friendContainer.style.display = 'block';
+            userInfo.textContent = `환영합니다, ${user.email}님!`;
+            
+            // 사용자 정보 저장
+            db.collection('users').doc(user.uid).set({
+                email: user.email
+            }, { merge: true });
+
+            loadUserData(user.uid);
+            loadQuests(user.uid);
+            updateQuestStats(user.uid);
+            loadFriends(user.uid);
+            loadSharedQuests(user.uid);
+            requestNotificationPermission();
+            loadNotifications();
+            checkInitialSetup(user.uid);
+        } else {
+            document.getElementById('loginButton').style.display = 'inline-block';
+            document.getElementById('logoutButton').style.display = 'none';
+            userInfo.style.display = 'none';
+            questContainer.style.display = 'none';
+            lifeExpectancyContainer.style.display = 'none';
+            friendContainer.style.display = 'none';
+            questList.innerHTML = '';
+        }
+    });
+
+    // 구글 로그인
+    window.googleLogin = () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider)
+            .catch((error) => {
+                console.error("로그인 에러:", error);
+                alert("로그인 중 오류가 발생했습니다.");
+            });
+    };
+
+    // 로그아웃
+    window.logout = () => {
+        auth.signOut()
+            .catch((error) => {
+                console.error("로그아웃 에러:", error);
+                alert("로그아웃 중 오류가 발생했습니다.");
+            });
+    };
+
     // 사용자 데이터 로드
     async function loadUserData(userId) {
       const userRef = db.collection('users').doc(userId);
@@ -1385,39 +1523,6 @@
       
       document.querySelector('.quest-list').appendChild(li);
     }
-
-    // 구글 로그인 처리
-    window.googleLogin = () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider)
-        .catch((error) => {
-          console.error("로그인 에러:", error);
-          alert("로그인 중 오류가 발생했습니다.");
-        });
-    };
-
-    // 로그아웃 처리
-    window.logout = () => {
-      auth.signOut()
-        .catch((error) => {
-          console.error("로그아웃 에러:", error);
-          alert("로그아웃 중 오류가 발생했습니다.");
-        });
-    };
-
-    const updateProgress = () => {
-      const now = new Date();
-      const start = new Date(now.getFullYear(), 0, 1);
-      const end = new Date(now.getFullYear() + 1, 0, 1);
-      const progress = (now - start) / (end - start);
-      const progressBar = document.querySelector('.progress-bar');
-      progressBar.style.width = (progress * 100).toFixed(5) + '%';
-      document.querySelector('.progress-text').textContent = 
-        `${now.getFullYear()}년이 ${(progress * 100).toFixed(5)}% 지났습니다.`;
-    };
-
-    setInterval(updateProgress, 1000);
-    updateProgress();
 
     // 친구 관련 함수들
     async function loadFriends(userId) {
@@ -2365,51 +2470,52 @@
 </head>
 <body>
   <div class="container">
+    <div class="header">
+        <div class="header-left"></div>
+        <div class="header-right">
+            <button id="loginButton" class="action-button" onclick="googleLogin()">로그인</button>
+            <button id="logoutButton" class="action-button" style="display: none;" onclick="logout()">로그아웃</button>
+        </div>
+    </div>
+
+    <div class="user-info" style="display: none;"></div>
+
     <h1>내 인생시간</h1>
     
-    <div class="clock-container">
-      <div class="clock">
-        <div class="clock-hand hour-hand"></div>
-        <div class="clock-hand minute-hand"></div>
-        <div class="clock-hand second-hand"></div>
+    <div class="progress-container">
+        <div class="progress-bar"></div>
+        <div class="progress-text"></div>
     </div>
+
+    <div class="clock-container">
+        <div class="clock">
+            <div class="clock-hand hour-hand"></div>
+            <div class="clock-hand minute-hand"></div>
+            <div class="clock-hand second-hand"></div>
+        </div>
     </div>
 
     <div class="age-display">
-      <span class="years">36.50422732</span> 세
+        <span class="years">0</span> 세
     </div>
 
-    <div class="stats-container">
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-value">36</div>
-          <div class="stat-label">생일</div>
+    <div class="life-expectancy-container" style="display: none;">
+        <div class="form-group">
+            <label for="birthYear">출생연도:</label>
+            <input type="number" id="birthYear" min="1900" max="2024">
         </div>
-        <div class="stat-item">
-          <div class="stat-value">146</div>
-          <div class="stat-label">계절</div>
+        <div class="form-group">
+            <label for="lifeExpectancy">기대수명:</label>
+            <input type="number" id="lifeExpectancy" min="1" max="150" value="80">
         </div>
-        <div class="stat-item">
-          <div class="stat-value">1903</div>
-          <div class="stat-label">주말</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">444</div>
-          <div class="stat-label">개월</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">13324</div>
-          <div class="stat-label">일</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value">319753</div>
-          <div class="stat-label">시간</div>
-        </div>
-      </div>
+        <button onclick="saveLifeExpectancy()" class="action-button">저장</button>
     </div>
 
-    <button class="action-button">목표 기록</button>
-    <button class="action-button primary">현재 순간 기록</button>
+    <div class="quest-container" style="display: none;">
+        <div class="quest-list"></div>
+    </div>
+
+    <div class="friend-container" style="display: none;"></div>
 
     <nav class="bottom-nav">
       <a href="#" class="nav-item active">
