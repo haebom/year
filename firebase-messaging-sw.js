@@ -1,3 +1,12 @@
+// Firebase 앱 구성
+self.addEventListener('install', (event) => {
+  console.log('Service Worker installing.');
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('Service Worker activating.');
+});
+
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
@@ -21,8 +30,30 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification.body,
     icon: '/year/maskable_icon_x192.png',
-    badge: '/year/maskable_icon_x72.png'
+    badge: '/year/maskable_icon_x72.png',
+    data: payload.data || {}
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// 알림 클릭 처리
+self.addEventListener('notificationclick', (event) => {
+  console.log('알림 클릭:', event);
+
+  event.notification.close();
+
+  // 알림 클릭시 앱 열기
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    })
+    .then((clientList) => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
+      }
+      return clients.openWindow('/year/');
+    })
+  );
 }); 
