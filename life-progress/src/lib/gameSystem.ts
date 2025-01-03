@@ -1,188 +1,187 @@
 'use client';
 
-import { collection, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
-import { db } from './firebase';
-import type { UserData, Achievement, GameStats } from '@/types';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { User, Achievement, GameStats, Quest } from '@/types';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
-// 레벨별 필요 경험치 계산
-export function getRequiredExp(level: number): number {
-  return Math.floor(100 * Math.pow(1.5, level - 1));
-}
-
-// 경험치 획득에 따른 레벨 계산
-export function calculateLevel(exp: number): number {
-  let level = 1;
-  while (exp >= getRequiredExp(level)) {
-    exp -= getRequiredExp(level);
-    level++;
-  }
-  return level;
-}
-
-// 기본 업적 목록
-export const ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'first_goal',
-    title: '첫 걸음',
-    description: '첫 번째 목표를 생성하세요',
-    icon: '🎯',
-    requirement: {
-      type: 'total_goals',
-      value: 1,
-    },
-    reward: {
-      points: 100,
-      experience: 50,
-    },
-  },
-  {
-    id: 'goal_master',
-    title: '목표 달성의 달인',
-    description: '10개의 목표를 완료하세요',
-    icon: '🏆',
-    requirement: {
-      type: 'goals_completed',
-      value: 10,
-    },
-    reward: {
-      points: 1000,
-      experience: 500,
-    },
-  },
-  {
-    id: 'streak_week',
-    title: '꾸준한 노력',
-    description: '7일 연속으로 접속하세요',
-    icon: '🔥',
-    requirement: {
-      type: 'consecutive_days',
-      value: 7,
-    },
-    reward: {
-      points: 500,
-      experience: 200,
-    },
-  },
-  // 더 많은 업적 추가 가능
+// 각 레벨에 필요한 경험치
+export const LEVEL_THRESHOLDS = [
+  0,      // Level 1
+  1000,   // Level 2
+  2500,   // Level 3
+  5000,   // Level 4
+  10000,  // Level 5
+  20000,  // Level 6
+  35000,  // Level 7
+  55000,  // Level 8
+  80000,  // Level 9
+  110000, // Level 10
 ];
 
-// 업적 달성 체크 및 보상 지급
-export async function checkAchievements(userId: string, userData: UserData): Promise<Achievement[]> {
-  const newAchievements: Achievement[] = [];
-  const unlockedIds = userData.gameStats.achievements.map(a => a.id);
-
-  for (const achievement of ACHIEVEMENTS) {
-    if (unlockedIds.includes(achievement.id)) continue;
-
-    let isUnlocked = false;
-    switch (achievement.requirement.type) {
-      case 'total_goals':
-        isUnlocked = Object.keys(userData.blocks).length >= achievement.requirement.value;
-        break;
-      case 'goals_completed':
-        isUnlocked = Object.values(userData.blocks).filter(b => b.progress === 100).length >= achievement.requirement.value;
-        break;
-      case 'consecutive_days':
-        isUnlocked = (userData.streak || 0) >= achievement.requirement.value;
-        break;
-      case 'points_earned':
-        isUnlocked = userData.gameStats.points >= achievement.requirement.value;
-        break;
-      case 'level_reached':
-        isUnlocked = userData.gameStats.level >= achievement.requirement.value;
-        break;
-    }
-
-    if (isUnlocked) {
-      const unlockedAchievement = {
-        ...achievement,
-        unlockedAt: new Date(),
-      };
-      newAchievements.push(unlockedAchievement);
-    }
-  }
-
-  if (newAchievements.length > 0) {
-    const updatedGameStats: GameStats = {
-      ...userData.gameStats,
-      achievements: [...userData.gameStats.achievements, ...newAchievements],
-      points: userData.gameStats.points + newAchievements.reduce((sum, a) => sum + a.reward.points, 0),
-      experience: userData.gameStats.experience + newAchievements.reduce((sum, a) => sum + a.reward.experience, 0),
+export async function updateGameStats(
+  userId: string,
+  userData: User,
+  updates: Partial<GameStats>
+): Promise<void> {
+  try {
+    const currentStats = userData.gameStats || {
+      level: 1,
+      experience: 0,
+      questsCompleted: 0,
+      points: 0,
+      streak: 0,
+      lastActive: null,
+      achievements: [],
     };
 
-    // 레벨 업데이트
-    updatedGameStats.level = calculateLevel(updatedGameStats.experience);
+    const newStats = {
+      ...currentStats,
+      ...updates,
+    };
 
-    await updateDoc(doc(db, 'users', userId), {
-      gameStats: updatedGameStats,
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      gameStats: newStats,
     });
+  } catch (error) {
+    console.error('게임 통계 업데이트 중 오류 발생:', error);
+    throw error;
   }
-
-  return newAchievements;
 }
 
-// 랭킹 업데이트
-export async function updateRankings(userId: string, userData: UserData): Promise<void> {
-  // 전체 랭킹 계산
-  const globalQ = query(
-    collection(db, 'users'),
-    orderBy('gameStats.points', 'desc'),
-    limit(1000)
-  );
-
-  const globalSnapshot = await getDocs(globalQ);
-  const globalRank = globalSnapshot.docs.findIndex(doc => doc.id === userId) + 1;
-
-  // 친구 랭킹 계산
-  let friendRank = 1;
-  if (userData.friends?.length) {
-    const friendsQ = query(
-      collection(db, 'users'),
-      where('id', 'in', userData.friends),
-      orderBy('gameStats.points', 'desc')
-    );
-
-    const friendsSnapshot = await getDocs(friendsQ);
-    const friendsList = friendsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      points: doc.data().gameStats.points,
-    }));
-
-    friendsList.push({
-      id: userId,
-      points: userData.gameStats.points,
-    });
-
-    friendsList.sort((a, b) => b.points - a.points);
-    friendRank = friendsList.findIndex(user => user.id === userId) + 1;
-  }
-
-  // 랭킹 업데이트
-  await updateDoc(doc(db, 'users', userId), {
-    'gameStats.rank': {
-      global: globalRank,
-      friends: friendRank,
-    },
-  });
-}
-
-// 포인트 및 경험치 획득
-export async function awardPoints(
+export async function calculateProgress(
   userId: string,
-  userData: UserData,
-  points: number,
-  experience: number
-): Promise<void> {
-  const updatedGameStats: GameStats = {
-    ...userData.gameStats,
-    points: userData.gameStats.points + points,
-    experience: userData.gameStats.experience + experience,
+  userData: User
+): Promise<number> {
+  const blocks = userData.blocks || {};
+  const totalBlocks = Object.keys(blocks).length;
+  if (totalBlocks === 0) return 0;
+
+  const gameStats = userData.gameStats || {
+    level: 1,
+    experience: 0,
+    questsCompleted: 0,
+    points: 0,
+    streak: 0,
+    lastActive: null,
+    achievements: [],
   };
 
-  // 레벨 업데이트
-  updatedGameStats.level = calculateLevel(updatedGameStats.experience);
+  const totalProgress = Object.values(blocks).reduce(
+    (sum, block) => sum + block.progress,
+    0
+  );
 
-  await updateDoc(doc(db, 'users', userId), {
-    gameStats: updatedGameStats,
-  });
+  const progress = Math.round(totalProgress / totalBlocks);
+
+  // 진행률이 100%에 도달하면 업적 달성
+  if (progress === 100) {
+    const achievement: Achievement = {
+      id: `progress_100_${Date.now()}`,
+      title: '완벽한 달성',
+      description: '모든 목표를 100% 달성했습니다!',
+      icon: '🏆',
+      requirement: {
+        type: 'goals_completed',
+        value: totalBlocks,
+      },
+      reward: {
+        points: 1000,
+        experience: 500,
+      },
+    };
+
+    await updateGameStats(userId, userData, {
+      ...gameStats,
+      achievements: [...gameStats.achievements, achievement],
+      points: gameStats.points + achievement.reward.points,
+      experience: gameStats.experience + achievement.reward.experience,
+    });
+  }
+
+  return progress;
+}
+
+export async function updateStreak(userId: string, userData: User): Promise<void> {
+  try {
+    const gameStats = userData.gameStats || {
+      level: 1,
+      experience: 0,
+      questsCompleted: 0,
+      points: 0,
+      streak: 0,
+      lastActive: null,
+      achievements: [],
+    };
+
+    const now = new Date();
+    const lastActive = gameStats.lastActive?.toDate() || new Date(0);
+    const daysSinceLastActive = Math.floor(
+      (now.getTime() - lastActive.getTime()) / (24 * 60 * 60 * 1000)
+    );
+
+    let newStreak = gameStats.streak;
+    if (daysSinceLastActive === 1) {
+      // 연속 접속
+      newStreak += 1;
+    } else if (daysSinceLastActive > 1) {
+      // 연속 접속 끊김
+      newStreak = 1;
+    }
+
+    // 연속 접속 업적 확인
+    if (newStreak >= 7) {
+      const achievement: Achievement = {
+        id: `streak_7_${Date.now()}`,
+        title: '일주일 연속 접속',
+        description: '7일 연속으로 접속했습니다!',
+        icon: '🔥',
+        requirement: {
+          type: 'consecutive_days',
+          value: 7,
+        },
+        reward: {
+          points: 500,
+          experience: 250,
+        },
+      };
+
+      await updateGameStats(userId, userData, {
+        ...gameStats,
+        streak: newStreak,
+        achievements: [...gameStats.achievements, achievement],
+        points: gameStats.points + achievement.reward.points,
+        experience: gameStats.experience + achievement.reward.experience,
+      });
+    } else {
+      await updateGameStats(userId, userData, {
+        ...gameStats,
+        streak: newStreak,
+      });
+    }
+  } catch (error) {
+    console.error('연속 접속 업데이트 중 오류 발생:', error);
+    throw error;
+  }
+}
+
+export async function getUserQuests(uid: string): Promise<Quest[]> {
+  if (!uid) {
+    throw new Error('유저 UID가 없습니다.');
+  }
+
+  try {
+    const questsRef = collection(db, 'quests');
+    const q = query(questsRef, where('userId', '==', uid));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Quest));
+  } catch (error) {
+    console.error('퀘스트 조회 중 오류:', error);
+    throw error;
+  }
 } 

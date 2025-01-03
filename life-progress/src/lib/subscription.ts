@@ -1,129 +1,79 @@
 'use client';
 
-import { collection, addDoc, deleteDoc, query, where, getDocs, doc } from 'firebase/firestore';
-import { db } from './firebase';
-import { createNotification } from './notification';
-import type { UserData } from '@/types';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { createNotification } from '@/lib/firebase';
+import type { User } from '@/types';
 
-interface Subscription {
-  id: string;
-  userId: string;
-  targetUserId: string;
-  createdAt: Date;
-}
-
-// 구독하기
-export async function subscribeToUser(
+export async function subscribeToGoal(
+  goalId: string,
   userId: string,
-  userData: UserData,
-  targetUserId: string
+  userData: User,
 ): Promise<void> {
   try {
-    // 구독 정보 저장
-    const subscription: Omit<Subscription, 'id'> = {
-      userId,
-      targetUserId,
-      createdAt: new Date(),
-    };
-    
-    await addDoc(collection(db, 'subscriptions'), subscription);
+    const goalRef = doc(db, 'goals', goalId);
+    const goalSnap = await getDoc(goalRef);
 
-    // 구독 알림 보내기
-    await createNotification({
-      userId: targetUserId,
-      senderId: userId,
-      senderName: userData.name,
-      senderPhotoURL: userData.photoURL,
-      title: '새로운 구독자',
-      message: `${userData.name}님이 회원님의 목표를 구독하기 시작했습니다.`,
-      type: 'system',
+    if (!goalSnap.exists()) {
+      throw new Error('목표를 찾을 수 없습니다.');
+    }
+
+    const goalData = goalSnap.data();
+
+    // 목표 작성자에게 알림 전송
+    await createNotification(
+      goalData.userId,
+      '새로운 구독자',
+      `${userData.name || '알 수 없는 사용자'}님이 회원님의 목표를 구독하기 시작했습니다.`,
+      'system',
+      {
+        goalId,
+        senderName: userData.name || '알 수 없는 사용자',
+        senderPhotoURL: userData.photoURL || '',
+      }
+    );
+
+    // 목표의 구독자 목록에 추가
+    await updateDoc(goalRef, {
+      subscribers: arrayUnion(userId),
     });
   } catch (error) {
-    console.error('구독 중 오류 발생:', error);
+    console.error('목표 구독 중 오류 발생:', error);
     throw error;
   }
 }
 
-// 구독 취소
-export async function unsubscribeFromUser(
+export async function unsubscribeFromGoal(
+  goalId: string,
   userId: string,
-  targetUserId: string
 ): Promise<void> {
   try {
-    const q = query(
-      collection(db, 'subscriptions'),
-      where('userId', '==', userId),
-      where('targetUserId', '==', targetUserId)
-    );
-
-    const snapshot = await getDocs(q);
-    const subscriptionDoc = snapshot.docs[0];
-    
-    if (subscriptionDoc) {
-      await deleteDoc(doc(db, 'subscriptions', subscriptionDoc.id));
-    }
+    const goalRef = doc(db, 'goals', goalId);
+    await updateDoc(goalRef, {
+      subscribers: arrayRemove(userId),
+    });
   } catch (error) {
-    console.error('구독 취소 중 오류 발생:', error);
+    console.error('목표 구독 취소 중 오류 발생:', error);
     throw error;
   }
 }
 
-// 구독 상태 확인
 export async function checkSubscriptionStatus(
+  goalId: string,
   userId: string,
-  targetUserId: string
 ): Promise<boolean> {
   try {
-    const q = query(
-      collection(db, 'subscriptions'),
-      where('userId', '==', userId),
-      where('targetUserId', '==', targetUserId)
-    );
+    const goalRef = doc(db, 'goals', goalId);
+    const goalSnap = await getDoc(goalRef);
 
-    const snapshot = await getDocs(q);
-    return !snapshot.empty;
+    if (!goalSnap.exists()) {
+      return false;
+    }
+
+    const goalData = goalSnap.data();
+    return goalData.subscribers?.includes(userId) || false;
   } catch (error) {
     console.error('구독 상태 확인 중 오류 발생:', error);
     return false;
-  }
-}
-
-// 구독자 목록 가져오기
-export async function getSubscribers(userId: string): Promise<Subscription[]> {
-  try {
-    const q = query(
-      collection(db, 'subscriptions'),
-      where('targetUserId', '==', userId)
-    );
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt.toDate(),
-    } as Subscription));
-  } catch (error) {
-    console.error('구독자 목록 가져오기 중 오류 발생:', error);
-    return [];
-  }
-}
-
-// 구독 중인 사용자 목록 가져오기
-export async function getSubscriptions(userId: string): Promise<Subscription[]> {
-  try {
-    const q = query(
-      collection(db, 'subscriptions'),
-      where('userId', '==', userId)
-    );
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt.toDate(),
-    } as Subscription));
-  } catch (error) {
-    console.error('구독 목록 가져오기 중 오류 발생:', error);
-    return [];
   }
 } 

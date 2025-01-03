@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Timestamp } from 'firebase/firestore';
 
 interface AgeCalculatorProps {
-  birthDate: Date;
+  birthDate: Timestamp | null;
 }
 
 export function AgeCalculator({ birthDate }: AgeCalculatorProps) {
@@ -11,8 +12,11 @@ export function AgeCalculator({ birthDate }: AgeCalculatorProps) {
 
   useEffect(() => {
     const calculateAge = () => {
+      if (!birthDate) return;
+
       const now = new Date();
-      const diffInMilliseconds = now.getTime() - birthDate.getTime();
+      const birthDateTime = birthDate.toDate();
+      const diffInMilliseconds = now.getTime() - birthDateTime.getTime();
       const ageInYears = diffInMilliseconds / (1000 * 60 * 60 * 24 * 365.25);
       setAge(ageInYears);
     };
@@ -25,6 +29,15 @@ export function AgeCalculator({ birthDate }: AgeCalculatorProps) {
 
     return () => clearInterval(interval);
   }, [birthDate]);
+
+  if (!birthDate) {
+    return (
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-2">내 인생시간</h2>
+        <p className="text-gray-600">생년월일을 설정해주세요.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="text-center">

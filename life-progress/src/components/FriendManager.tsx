@@ -1,298 +1,128 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { useState } from 'react';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Button } from '@/components/ui/Button';
-import type { Friend, UserData } from '@/types';
-import { createNotification } from '@/lib/notification';
+import type { User } from '@/types';
 
 interface FriendManagerProps {
-  userId: string;
-  userData: UserData;
-  onUpdate?: () => void;
+  user: User;
+  onUpdate: (updatedUser: User) => void;
 }
 
-export function FriendManager({ userId, userData, onUpdate }: FriendManagerProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<UserData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
-  const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
+export function FriendManager({ user, onUpdate }: FriendManagerProps) {
+  const [friendId, setFriendId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 사용자 검색
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleAddFriend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!friendId.trim()) return;
 
-    setLoading(true);
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const q = query(
-        collection(db, 'users'),
-        where('email', '>=', searchQuery),
-        where('email', '<=', searchQuery + '\uf8ff')
-      );
-
-      const snapshot = await getDocs(q);
-      const results = snapshot.docs
-        .map(doc => ({ ...doc.data(), id: doc.id }) as UserData)
-        .filter(user => user.id !== userId);
+      const userRef = doc(db, 'users', user.uid);
+      const updatedFriends = [...(user.friends || []), friendId];
       
-      setSearchResults(results);
-    } catch (error) {
-      console.error('사용자 검색 중 오류 발생:', error);
-    }
-    setLoading(false);
-  };
-
-  // 친구 요청 보내기
-  const handleSendRequest = async (friendId: string) => {
-    try {
-      // 친구 요청 생성
-      const friendRequest: Friend = {
-        id: `${userId}_${friendId}`,
-        userId: userId,
-        friendId: friendId,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      await addDoc(collection(db, 'friends'), friendRequest);
-
-      // 알림 생성
-      await createNotification({
-        userId: friendId,
-        senderId: userId,
-        senderName: userData.name,
-        senderPhotoURL: userData.photoURL,
-        title: '새로운 친구 요청',
-        message: `${userData.name}님이 친구 요청을 보냈습니다.`,
-        type: 'friend_request',
-        action: {
-          type: 'accept_friend',
-          data: {
-            friendId: userId,
-          },
-        },
-      });
-
-      setSearchResults([]);
-      setSearchQuery('');
-    } catch (error) {
-      console.error('친구 요청 보내기 중 오류 발생:', error);
-    }
-  };
-
-  // 친구 요청 수락
-  const handleAcceptRequest = async (friendId: string) => {
-    try {
-      const friendRef = doc(db, 'friends', `${friendId}_${userId}`);
-      await updateDoc(friendRef, {
-        status: 'accepted',
-        updatedAt: new Date().toISOString(),
-      });
-
-      // 사용자의 친구 목록 업데이트
-      const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
-        friends: [...(userData.friends || []), friendId],
+        friends: arrayUnion(friendId)
       });
 
-      onUpdate?.();
+      onUpdate({
+        ...user,
+        friends: updatedFriends
+      });
+
+      setFriendId('');
     } catch (error) {
-      console.error('친구 요청 수락 중 오류 발생:', error);
+      console.error('친구 추가 중 오류:', error);
+      setError('친구를 추가하는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // 친구 요청 거절
-  const handleRejectRequest = async (friendId: string) => {
+  const handleRemoveFriend = async (friendIdToRemove: string) => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const friendRef = doc(db, 'friends', `${friendId}_${userId}`);
-      await updateDoc(friendRef, {
-        status: 'rejected',
-        updatedAt: new Date().toISOString(),
+      const userRef = doc(db, 'users', user.uid);
+      const updatedFriends = (user.friends || []).filter(id => id !== friendIdToRemove);
+      
+      await updateDoc(userRef, {
+        friends: arrayRemove(friendIdToRemove)
       });
 
-      // 요청 목록에서 제거
-      setPendingRequests(prev => prev.filter(req => req.userId !== friendId));
-
-      // 알림 생성
-      await createNotification({
-        userId: friendId,
-        senderId: userId,
-        senderName: userData.name,
-        senderPhotoURL: userData.photoURL,
-        title: '친구 요청 결과',
-        message: `${userData.name}님이 친구 요청을 거절했습니다.`,
-        type: 'system',
+      onUpdate({
+        ...user,
+        friends: updatedFriends
       });
     } catch (error) {
-      console.error('친구 요청 거절 중 오류 발생:', error);
+      console.error('친구 삭제 중 오류:', error);
+      setError('친구를 삭제하는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  // 친구 요청 목록 가져오기
-  useEffect(() => {
-    const fetchPendingRequests = async () => {
-      try {
-        const q = query(
-          collection(db, 'friends'),
-          where('friendId', '==', userId),
-          where('status', '==', 'pending')
-        );
-
-        const snapshot = await getDocs(q);
-        const requests = snapshot.docs.map(doc => ({
-          ...doc.data(),
-          id: doc.id,
-        })) as Friend[];
-
-        setPendingRequests(requests);
-      } catch (error) {
-        console.error('친구 요청 목록 가져오기 중 오류 발생:', error);
-      }
-    };
-
-    if (activeTab === 'requests') {
-      fetchPendingRequests();
-    }
-  }, [userId, activeTab]);
 
   return (
-    <div className="space-y-4">
-      {/* 검색 */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="이메일로 친구 찾기"
-          className="flex-1 p-2 border rounded"
-        />
-        <Button
-          onClick={handleSearch}
-          disabled={loading || !searchQuery.trim()}
-        >
-          검색
-        </Button>
+    <div className="space-y-6">
+      <form onSubmit={handleAddFriend} className="space-y-4">
+        <div>
+          <label htmlFor="friendId" className="block text-sm font-medium text-gray-700">
+            친구 ID
+          </label>
+          <div className="mt-1 flex rounded-md shadow-sm">
+            <input
+              type="text"
+              id="friendId"
+              value={friendId}
+              onChange={(e) => setFriendId(e.target.value)}
+              className="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder="친구의 ID를 입력하세요"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !friendId.trim()}
+              className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+            >
+              {isLoading ? '처리중...' : '추가'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {error && (
+        <div className="rounded-md bg-red-50 p-4">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+
+      <div className="mt-6">
+        <h3 className="text-lg font-medium text-gray-900">친구 목록</h3>
+        {user.friends && user.friends.length > 0 ? (
+          <ul className="mt-3 divide-y divide-gray-200">
+            {user.friends.map((friendId) => (
+              <li key={friendId} className="py-4 flex justify-between items-center">
+                <span className="text-sm text-gray-900">{friendId}</span>
+                <button
+                  onClick={() => handleRemoveFriend(friendId)}
+                  disabled={isLoading}
+                  className="ml-3 text-sm text-red-600 hover:text-red-800 disabled:text-gray-400"
+                >
+                  삭제
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-gray-500">아직 친구가 없습니다.</p>
+        )}
       </div>
-
-      {/* 검색 결과 */}
-      {searchResults.length > 0 && (
-        <div className="border rounded-lg divide-y">
-          {searchResults.map((user) => (
-            <div key={user.id} className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {user.photoURL ? (
-                  <div className="relative w-10 h-10">
-                    <Image
-                      src={user.photoURL}
-                      alt={user.name}
-                      fill
-                      className="rounded-full object-cover"
-                      sizes="40px"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    {user.name[0]}
-                  </div>
-                )}
-                <div>
-                  <Link href={`/profile/${user.id}`} className="font-semibold hover:underline">
-                    {user.name}
-                  </Link>
-                  <div className="text-sm text-gray-600">{user.email}</div>
-                </div>
-              </div>
-              <Button
-                onClick={() => handleSendRequest(user.id)}
-                variant="outline"
-                size="sm"
-              >
-                친구 요청
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 탭 */}
-      <div className="flex gap-4 border-b">
-        <button
-          onClick={() => setActiveTab('friends')}
-          className={`pb-2 px-1 ${
-            activeTab === 'friends'
-              ? 'border-b-2 border-blue-500 font-semibold'
-              : 'text-gray-500'
-          }`}
-        >
-          친구 목록
-        </button>
-        <button
-          onClick={() => setActiveTab('requests')}
-          className={`pb-2 px-1 ${
-            activeTab === 'requests'
-              ? 'border-b-2 border-blue-500 font-semibold'
-              : 'text-gray-500'
-          }`}
-        >
-          친구 요청
-        </button>
-      </div>
-
-      {/* 친구 목록 */}
-      {activeTab === 'friends' && (userData.friends?.length ?? 0) > 0 && (
-        <div className="space-y-4">
-          {userData.friends?.map((friendId) => (
-            <div key={friendId} className="p-4 border rounded-lg">
-              <Link href={`/profile/${friendId}`} className="font-semibold hover:underline">
-                {friendId}
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 친구 요청 목록 */}
-      {activeTab === 'requests' && (
-        <div className="space-y-4">
-          {pendingRequests.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              새로운 친구 요청이 없습니다.
-            </div>
-          ) : (
-            pendingRequests.map((request) => (
-              <div key={request.id} className="p-4 border rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">{request.userId}</div>
-                  <div className="text-sm text-gray-600">
-                    {new Date(request.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleAcceptRequest(request.userId)}
-                    variant="default"
-                    size="sm"
-                  >
-                    수락
-                  </Button>
-                  <Button
-                    onClick={() => handleRejectRequest(request.userId)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    거절
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
     </div>
   );
 } 

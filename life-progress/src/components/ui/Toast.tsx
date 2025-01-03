@@ -1,10 +1,10 @@
-import * as React from 'react';
+'use client';
+
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
-import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const toastVariants = cva(
-  'fixed bottom-4 right-4 flex items-center gap-2 rounded-lg p-4 shadow-lg transition-all duration-300',
+  'fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transition-all duration-300',
   {
     variants: {
       variant: {
@@ -20,41 +20,31 @@ const toastVariants = cva(
   }
 );
 
-interface ToastProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof toastVariants> {
+interface ToastProps extends VariantProps<typeof toastVariants> {
   message: string;
+  duration?: number;
   onClose: () => void;
 }
 
-const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
-  ({ message, variant, onClose, className, ...props }, ref) => {
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
+export function Toast({ message, duration = 3000, variant = 'default', onClose }: ToastProps) {
+  const [isVisible, setIsVisible] = useState(true);
 
-      return () => clearTimeout(timer);
-    }, [onClose]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(onClose, 300); // 애니메이션이 끝난 후 제거
+    }, duration);
 
-    return (
-      <div
-        ref={ref}
-        className={cn(toastVariants({ variant, className }))}
-        {...props}
-      >
-        <span>{message}</span>
-        <button
-          onClick={onClose}
-          className="rounded-full p-1 hover:bg-black/10 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
-  }
-);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
 
-Toast.displayName = 'Toast';
-
-export { Toast, toastVariants }; 
+  return (
+    <div
+      className={`${toastVariants({ variant })} ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+      }`}
+    >
+      {message}
+    </div>
+  );
+} 

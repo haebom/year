@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { collection, query, where, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Notification } from '@/types';
+import { Timestamp } from 'firebase/firestore';
 
 interface NotificationCenterProps {
   userId: string;
@@ -36,7 +37,7 @@ export function NotificationCenter({ userId, onAction }: NotificationCenterProps
       const newNotifications = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id,
-        createdAt: doc.data().createdAt.toDate(),
+        createdAt: doc.data().createdAt instanceof Timestamp ? doc.data().createdAt : Timestamp.fromDate(new Date(doc.data().createdAt)),
       })) as Notification[];
       
       setNotifications(newNotifications);
@@ -70,7 +71,8 @@ export function NotificationCenter({ userId, onAction }: NotificationCenterProps
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (timestamp: Timestamp) => {
+    const date = timestamp.toDate();
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
