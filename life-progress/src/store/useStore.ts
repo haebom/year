@@ -1,70 +1,106 @@
 import { create } from 'zustand';
-import { User, Quest, Notification, Friend } from '@/types';
+import { User } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { fetchUserData } from '@/lib/firebase';
+import type { UserData, Block } from '@/types';
 
 interface Store {
   user: User | null;
-  quests: Quest[];
-  notifications: Notification[];
-  friends: Friend[];
+  userData: UserData | null;
+  loading: boolean;
+  error: string | null;
+  cachedUsers: Map<string, UserData>;
   setUser: (user: User | null) => void;
-  setQuests: (quests: Quest[]) => void;
-  addQuest: (quest: Quest) => void;
-  updateQuest: (quest: Quest) => void;
-  deleteQuest: (questId: string) => void;
-  setNotifications: (notifications: Notification[]) => void;
-  addNotification: (notification: Notification) => void;
-  markNotificationAsRead: (notificationId: string) => void;
-  setFriends: (friends: Friend[]) => void;
-  addFriend: (friend: Friend) => void;
-  removeFriend: (friendId: string) => void;
+  setUserData: (userData: UserData | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  fetchUserData: (userId: string) => Promise<void>;
+  updateBlock: (blockId: string, blockData: Partial<Block>) => Promise<void>;
+  getCachedUser: (userId: string) => Promise<UserData | null>;
 }
 
-type State = {
-  user: User | null;
-  quests: Quest[];
-  notifications: Notification[];
-  friends: Friend[];
-};
-
-const useStore = create<Store>((set) => ({
+const useStore = create<Store>((set, get) => ({
   user: null,
-  quests: [],
-  notifications: [],
-  friends: [],
-  
-  setUser: (user: User | null) => set({ user }),
-  
-  setQuests: (quests: Quest[]) => set({ quests }),
-  addQuest: (quest: Quest) =>
-    set((state: State) => ({ quests: [...state.quests, quest] })),
-  updateQuest: (quest: Quest) =>
-    set((state: State) => ({
-      quests: state.quests.map((q: Quest) => (q.id === quest.id ? quest : q)),
-    })),
-  deleteQuest: (questId: string) =>
-    set((state: State) => ({
-      quests: state.quests.filter((q: Quest) => q.id !== questId),
-    })),
-  
-  setNotifications: (notifications: Notification[]) => set({ notifications }),
-  addNotification: (notification: Notification) =>
-    set((state: State) => ({
-      notifications: [...state.notifications, notification],
-    })),
-  markNotificationAsRead: (notificationId: string) =>
-    set((state: State) => ({
-      notifications: state.notifications.map((n: Notification) =>
-        n.id === notificationId ? { ...n, read: true } : n
-      ),
-    })),
-  
-  setFriends: (friends: Friend[]) => set({ friends }),
-  addFriend: (friend: Friend) =>
-    set((state: State) => ({ friends: [...state.friends, friend] })),
-  removeFriend: (friendId: string) =>
-    set((state: State) => ({
-      friends: state.friends.filter((f: Friend) => f.id !== friendId),
-    })),
+  userData: null,
+  loading: false,
+  error: null,
+  cachedUsers: new Map(),
+
+  setUser: (user) => set({ user }),
+  setUserData: (userData) => set({ userData }),
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
+
+  fetchUserData: async (userId) => {
+    try {
+      set({ loading: true, error: null });
+      const data = await fetchUserData(userId);
+      if (data) {
+        // 캐시에 사용자 데이터 저장
+        get().cachedUsers.set(userId, data);
+        if (get().user?.uid === userId) {
+          set({ userData: data });
+        }
+      }
+    } catch (err) {
+      console.error('사용자 데이터를 불러오는데 실패했습니다:', err);
+      set({ error: '사용자 데이터를 불러오는데 실패했습니다.' });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateBlock: async (blockId, blockData) => {
+    const { user, userData } = get();
+    if (!user || !userData) return;
+
+    try {
+      const existingBlock = userData.blocks[blockId];
+      const updatedBlock = {
+        ...existingBlock,
+        ...blockData,
+        updatedAt: new Date(),
+      };
+
+      const updatedBlocks = {
+        ...userData.blocks,
+        [blockId]: updatedBlock,
+      };
+
+      await updateDoc(doc(db, 'users', user.uid), {
+        blocks: updatedBlocks,
+        updatedAt: new Date(),
+      });
+
+      set({
+        userData: {
+          ...userData,
+          blocks: updatedBlocks,
+        },
+      });
+    } catch (error) {
+      console.error('블록 업데이트 중 오류 발생:', error);
+    }
+  },
+
+  getCachedUser: async (userId) => {
+    const { cachedUsers } = get();
+    if (cachedUsers.has(userId)) {
+      return cachedUsers.get(userId) || null;
+    }
+
+    try {
+      const data = await fetchUserData(userId);
+      if (data) {
+        cachedUsers.set(userId, data);
+        return data;
+      }
+    } catch (error) {
+      console.error('사용자 데이터 로딩 중 오류 발생:', error);
+    }
+    return null;
+  },
 }));
 
 export default useStore; 
